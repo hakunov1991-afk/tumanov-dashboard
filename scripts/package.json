@@ -1,0 +1,19 @@
+{
+  "name": "tumanov-dashboard-scripts",
+  "version": "1.0.0",
+  "description": "AmoCRM data sync scripts for Tumanov CRM Dashboard",
+  "type": "module",
+  "scripts": {
+    "tasks": "node tasks-sync.js",
+    "rating": "node rating-sync.js",
+    "stats": "node stats-sync.js",
+    "cohort": "node cohort-sync.js",
+    "conversion": "node conversion-sync.js",
+    "interns": "node interns-sync.js",
+    "leads": "node leads-distribution.js",
+    "all": "node run-all.js"
+  },
+  "dependencies": {
+    "axios": "^1.7.0"
+  }
+}

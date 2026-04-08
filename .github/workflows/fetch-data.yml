@@ -1,0 +1,59 @@
+name: Fetch Dashboard Data
+
+on:
+  schedule:
+    - cron: '17 0,6,12,18 * * *'  # Every 6 hours (off-minute to avoid load spikes)
+  workflow_dispatch: {}             # Manual trigger
+
+jobs:
+  fetch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Fetch sheet metadata
+        run: |
+          curl -sL "https://script.google.com/macros/s/AKfycbxnMZ53JPp4HHvBxPICo9jTW4hWfsBtrsIjq3VsuTzXwu1Lz1-03863RY-bQ5hUWbNO/exec?meta=1" > docs/data/meta.json
+          echo "Meta fetched: $(wc -c < docs/data/meta.json) bytes"
+
+      - name: Fetch individual sheets
+        run: |
+          declare -A SHEETS=(
+            ["zadachi"]="%D0%97%D0%B0%D0%B4%D0%B0%D1%87%D0%B8"
+            ["zadachi-brokerov"]="%D0%97%D0%B0%D0%B4%D0%B0%D1%87%D0%B8%20%D0%B1%D1%80%D0%BE%D0%BA%D0%B5%D1%80%D0%BE%D0%B2"
+            ["rating"]="%D0%A0%D0%B5%D0%B9%D1%82%D0%B8%D0%BD%D0%B3"
+            ["rating-brokerov"]="%D0%A0%D0%B5%D0%B9%D1%82%D0%B8%D0%BD%D0%B3%20%D0%B1%D1%80%D0%BE%D0%BA%D0%B5%D1%80%D0%BE%D0%B2"
+            ["rating-promezhutochny"]="%D0%A0%D0%B5%D0%B9%D1%82%D0%B8%D0%BD%D0%B3%20%D0%BF%D1%80%D0%BE%D0%BC%D0%B5%D0%B6%D1%83%D1%82%D0%BE%D1%87%D0%BD%D1%8B%D0%B9"
+            ["statistika"]="%D0%A1%D1%82%D0%B0%D1%82%D0%B8%D1%81%D1%82%D0%B8%D0%BA%D0%B0"
+            ["kogortny-analiz"]="%D0%9A%D0%BE%D0%B3%D0%BE%D1%80%D1%82%D0%BD%D1%8B%D0%B9%20%D0%B0%D0%BD%D0%B0%D0%BB%D0%B8%D0%B7"
+            ["konversiya-2"]="%D0%9A%D0%BE%D0%BD%D0%B2%D0%B5%D1%80%D1%81%D0%B8%D1%8F%20%D0%BF%D0%BE%20%D0%BD%D0%B5%D0%B4%D0%B5%D0%BB%D1%8F%D0%BC%202"
+            ["konversiya-4"]="%D0%9A%D0%BE%D0%BD%D0%B2%D0%B5%D1%80%D1%81%D0%B8%D1%8F%204%20%D0%BD%D0%B5%D0%B4%D0%B5%D0%BB%D0%B8"
+            ["stazhery"]="%D0%A1%D1%82%D0%B0%D0%B6%D0%B5%D1%80%D1%8B"
+            ["prichiny-zakrytiya"]="%D0%9F%D1%80%D0%B8%D1%87%D0%B8%D0%BD%D1%8B%20%D0%B7%D0%B0%D0%BA%D1%80%D1%8B%D1%82%D0%B8%D1%8F"
+            ["raspredelenie-lidov"]="%D0%A0%D0%B0%D1%81%D0%BF%D1%80%D0%B5%D0%B4%D0%B5%D0%BB%D0%B5%D0%BD%D0%B8%D0%B5%20%D0%BB%D0%B8%D0%B4%D0%BE%D0%B2"
+            ["teplovaya-karta"]="%D0%A2%D0%B5%D0%BF%D0%BB%D0%BE%D0%B2%D0%B0%D1%8F%20%D0%BA%D0%B0%D1%80%D1%82%D0%B0%20%D0%B1%D1%80%D0%BE%D0%BA%D0%B5%D1%80%D0%BE%D0%B2"
+            ["stakan"]="%D0%A1%D1%82%D0%B0%D0%BA%D0%B0%D0%BD%202%2F3%2F4%20%D0%BA%D1%80%D1%83%D0%B3"
+            ["amo-mapping"]="%D0%90%D0%9C%D0%9E%20%D0%9C%D0%B0%D0%BF%D0%BF%D0%B8%D0%BD%D0%B3"
+          )
+
+          BASE_URL="https://script.google.com/macros/s/AKfycbxnMZ53JPp4HHvBxPICo9jTW4hWfsBtrsIjq3VsuTzXwu1Lz1-03863RY-bQ5hUWbNO/exec"
+
+          for filename in "${!SHEETS[@]}"; do
+            encoded="${SHEETS[$filename]}"
+            echo "Fetching: $filename..."
+            curl -sL "${BASE_URL}?sheet=${encoded}" > "docs/data/sheets/${filename}.json"
+            echo "  $(wc -c < "docs/data/sheets/${filename}.json") bytes"
+            sleep 3
+          done
+
+      - name: Commit and push if changed
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add docs/data/
+          if git diff --staged --quiet; then
+            echo "No data changes"
+          else
+            git commit -m "Update dashboard data $(date -u +%Y-%m-%dT%H:%M:%SZ)"
+            git push
+          fi

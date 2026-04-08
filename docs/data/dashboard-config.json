@@ -1,0 +1,144 @@
+{
+  "version": 1,
+  "pages": {
+    "tasks": {
+      "title": "Задачи",
+      "sheet": "Задачи",
+      "file": "zadachi",
+      "tables": [
+        { "id": "circles", "title": "Круги (Взято в работу)", "from": 0, "to": 4 },
+        {
+          "id": "t1", "title": "T1: Просроченные задачи", "from": 6, "to": 19,
+          "formatting": {
+            "type": "threshold",
+            "rules": [
+              { "min": 10, "bg": "#880e4f", "color": "#fff" },
+              { "min": 5, "bg": "#fff3e0", "color": "#000" },
+              { "min": 1, "bg": "#fce4ec", "color": "#000" }
+            ]
+          },
+          "hasDelta": true
+        },
+        {
+          "id": "t2", "title": "T2: Активные карточки сделок", "from": 22, "to": 35,
+          "formatting": {
+            "type": "threshold",
+            "rules": [
+              { "min": 40, "bg": "#ef9a9a", "color": "#000" },
+              { "min": 30, "bg": "#ffcc80", "color": "#000" },
+              { "min": 20, "bg": "#ffe0b2", "color": "#000" },
+              { "min": 10, "bg": "#fff9c4", "color": "#000" }
+            ]
+          }
+        },
+        {
+          "id": "t3", "title": "T3: Просрочки более 30 дней на этапе", "from": 38, "to": 51,
+          "formatting": {
+            "type": "threshold",
+            "rules": [
+              { "min": 20, "bg": "#ef9a9a", "color": "#000" },
+              { "min": 15, "bg": "#ffcc80", "color": "#000" },
+              { "min": 10, "bg": "#ffe0b2", "color": "#000" },
+              { "min": 5, "bg": "#fff9c4", "color": "#000" }
+            ]
+          }
+        },
+        { "id": "t4", "title": "T4: Взято в работу вчера", "from": 55, "to": 68 },
+        { "id": "t5", "title": "T5: Взято в работу за месяц", "from": 72, "to": 85 },
+        { "id": "t7", "title": "T7: Средняя скорость переходов (часы)", "from": 92, "to": 105 },
+        { "id": "sched", "title": "Постановка задач", "from": 110, "to": 123 }
+      ]
+    },
+    "broker-tasks": {
+      "title": "Задачи брокеров",
+      "sheet": "Задачи брокеров",
+      "file": "zadachi-brokerov",
+      "tables": [
+        {
+          "id": "bt", "title": "Контроль постановки задач ботом", "from": 0, "to": 14,
+          "headerRows": 2,
+          "formatting": {
+            "type": "threshold",
+            "rules": [
+              { "min": 5, "bg": "#ef9a9a", "color": "#000" },
+              { "min": 3, "bg": "#ffcc80", "color": "#000" },
+              { "min": 1, "bg": "#fff9c4", "color": "#000" }
+            ]
+          }
+        },
+        {
+          "id": "t8", "title": "Скорость взятия в работу (секунды)", "from": 17, "to": 31,
+          "headerRows": 2,
+          "formatting": {
+            "type": "threshold",
+            "rules": [
+              { "min": 86400, "bg": "#ef9a9a", "color": "#000" },
+              { "min": 3600, "bg": "#ffcc80", "color": "#000" },
+              { "min": 600, "bg": "#fff9c4", "color": "#000" }
+            ]
+          }
+        },
+        {
+          "id": "t9", "title": "Снятые сделки", "from": 36, "to": 50,
+          "headerRows": 2,
+          "formatting": {
+            "type": "threshold",
+            "rules": [
+              { "min": 5, "bg": "#ef9a9a", "color": "#000" },
+              { "min": 3, "bg": "#ffcc80", "color": "#000" },
+              { "min": 1, "bg": "#fff9c4", "color": "#000" }
+            ]
+          }
+        },
+        {
+          "id": "t10", "title": "Количество просрочек по дням", "from": 55, "to": 69,
+          "headerRows": 2,
+          "formatting": {
+            "type": "threshold",
+            "rules": [
+              { "min": 10, "bg": "#880e4f", "color": "#fff" },
+              { "min": 5, "bg": "#fff3e0", "color": "#000" },
+              { "min": 1, "bg": "#fce4ec", "color": "#000" }
+            ]
+          }
+        }
+      ]
+    },
+    "rating": {
+      "title": "Рейтинг",
+      "sheet": "Рейтинг",
+      "file": "rating",
+      "tables": [
+        {
+          "id": "rating-main", "title": "Рейтинг брокеров", "from": 0, "to": -1,
+          "formatting": {
+            "type": "rating",
+            "titleRows": 3,
+            "statusColors": {
+              "Лидер": { "bg": "#dcfce7", "color": "#166534" },
+              "ТОП 2": { "bg": "#dbeafe", "color": "#1e40af" },
+              "ТОП 3": { "bg": "#e0e7ff", "color": "#3730a3" },
+              "рентабельный": { "bg": "#fef9c3", "color": "#854d0e" },
+              "убыточный": { "bg": "#fecaca", "color": "#991b1b" }
+            },
+            "currencyMarkers": ["$", "маржа", "вклад", "затрат"],
+            "percentMarkers": ["%", "сжиган"]
+          }
+        }
+      ]
+    }
+  },
+  "genericPages": {
+    "rating-brokers": { "title": "Рейтинг брокеров", "sheet": "Рейтинг брокеров", "file": "rating-brokerov" },
+    "rating-interim": { "title": "Рейтинг промежуточный", "sheet": "Рейтинг промежуточный", "file": "rating-promezhutochny" },
+    "statistics": { "title": "Статистика", "sheet": "Статистика", "file": "statistika" },
+    "cohort": { "title": "Когортный анализ", "sheet": "Когортный анализ", "file": "kogortny-analiz" },
+    "conversion2": { "title": "Конверсия по неделям 2", "sheet": "Конверсия по неделям 2", "file": "konversiya-2" },
+    "conversion4": { "title": "Конверсия 4 недели", "sheet": "Конверсия 4 недели", "file": "konversiya-4" },
+    "interns": { "title": "Стажеры", "sheet": "Стажеры", "file": "stazhery" },
+    "closure": { "title": "Причины закрытия", "sheet": "Причины закрытия", "file": "prichiny-zakrytiya" },
+    "leads": { "title": "Распределение лидов", "sheet": "Распределение лидов", "file": "raspredelenie-lidov" },
+    "heatmap": { "title": "Тепловая карта брокеров", "sheet": "Тепловая карта брокеров", "file": "teplovaya-karta" },
+    "stakan": { "title": "Стакан 2/3/4 круг", "sheet": "Стакан 2/3/4 круг", "file": "stakan" }
+  }
+}

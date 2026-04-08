@@ -1,0 +1,92 @@
+{
+  "_meta": {
+    "spreadsheetName": "Таблица Tumanov",
+    "spreadsheetId": "1LLAUQFN-JnfFZXTGFuoZmU_ttZ8XTbbxVIuGgQiYNtg",
+    "spreadsheetUrl": "https://docs.google.com/spreadsheets/d/1LLAUQFN-JnfFZXTGFuoZmU_ttZ8XTbbxVIuGgQiYNtg/edit",
+    "snapshotDate": "2026-04-08T09:10:56.780Z",
+    "timezone": "Europe/Moscow",
+    "sheetsCount": 0
+  },
+  "sheets": {
+    "Распределение лидов": {
+      "rows": 9,
+      "cols": 6,
+      "truncatedRows": false,
+      "truncatedCols": false,
+      "data": [
+        [
+          "",
+          "План %",
+          "Кол-во лидов взятых в работу",
+          "Факт %",
+          "",
+          ""
+        ],
+        [
+          "Басов Антон",
+          9,
+          6,
+          12,
+          "",
+          3
+        ],
+        [
+          "Ольга Сиразитдинова",
+          4,
+          9,
+          17,
+          "",
+          13
+        ],
+        [
+          "Альвина Санникова",
+          3,
+          4,
+          8,
+          "",
+          5
+        ],
+        [
+          "Михаил Брытков",
+          22,
+          8,
+          15,
+          "",
+          -7
+        ],
+        [
+          "Заур Мусали",
+          9,
+          10,
+          19,
+          "",
+          10
+        ],
+        [
+          "Дубков Станислав",
+          35,
+          15,
+          29,
+          "",
+          -6
+        ],
+        [
+          "Александр Найденов",
+          18,
+          0,
+          0,
+          "",
+          -18
+        ],
+        [
+          "ИТОГО",
+          "",
+          52,
+          100,
+          "",
+          ""
+        ]
+      ]
+    }
+  }
+}
