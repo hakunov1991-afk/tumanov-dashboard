@@ -70,13 +70,13 @@ var ConfigRenderer = (function() {
     var fmtFn = getFormattingFn(tbl.id);
     if (tbl.rows) {
       for (var r = 0; r < tbl.rows.length; r++) {
-        html += renderDataRow(tbl.rows[r], false, fmtFn, tbl.id);
+        html += renderDataRow(tbl.rows[r], false, fmtFn, tbl.id, tbl.headers);
       }
     }
 
     // Итого
     if (tbl.totals) {
-      html += renderDataRow(tbl.totals, true, null, tbl.id);
+      html += renderDataRow(tbl.totals, true, null, tbl.id, tbl.headers);
     }
 
     html += '</table></div></div>';
@@ -102,10 +102,11 @@ var ConfigRenderer = (function() {
     return null;
   }
 
-  function renderDataRow(row, isTotal, fmtFn, tableId) {
+  function renderDataRow(row, isTotal, fmtFn, tableId, headers) {
     if (!row) return '';
+    var isRating = tableId === 'rating' || tableId === 'rating-interim';
     var html = '<tr' + (isTotal ? ' class="total-row"' : '') + '>';
-    var isDeltaTable = (tableId === 't1'); // T1 имеет дельта-столбцы
+    var isDeltaTable = (tableId === 't1');
 
     for (var c = 0; c < row.length; c++) {
       var raw = row[c];
@@ -119,34 +120,32 @@ var ConfigRenderer = (function() {
         ids = null;
       }
 
-      // Стиль для итого
       if (isTotal) {
         style = ' style="font-weight:700;background-color:#eef2ff"';
       }
 
-      // Дельта столбцы (последние 3 для T1)
-      if (isDeltaTable && !isTotal && c > 0 && typeof val === 'string' && val.match(/^[+-]\d/)) {
+      // Рейтинг — специальное форматирование
+      if (isRating && !isTotal) {
+        var ratingStyle = getRatingCellStyle(val, c, row, headers);
+        if (ratingStyle) style = ' style="' + ratingStyle + '"';
+      }
+      // Дельта столбцы (T1)
+      else if (isDeltaTable && !isTotal && c > 0 && typeof val === 'string' && val.match(/^[+-]\d/)) {
         var num = parseInt(val);
         var dColor = num > 0 ? '#dc2626' : num < 0 ? '#16a34a' : '#999';
         style = ' style="color:' + dColor + ';font-weight:600"';
       }
-      // Условное форматирование по правилам таблицы
+      // Условное форматирование по правилам
       else if (!isTotal && c > 0 && fmtFn && val !== '' && val !== 0) {
         var numVal = typeof val === 'number' ? val : parseFloat(val);
         if (!isNaN(numVal) && numVal > 0) {
           var fmt = fmtFn(numVal);
-          if (fmt) {
-            style = ' style="background-color:' + fmt.bg + ';color:' + fmt.color + '"';
-          }
+          if (fmt) style = ' style="background-color:' + fmt.bg + ';color:' + fmt.color + '"';
         }
       }
 
-      // Имя (первый столбец)
-      if (c === 0) {
-        cls = ' class="cell-name"';
-      }
+      if (c === 0) cls = ' class="cell-name"';
 
-      // Кликабельная ячейка с ID сделок
       var dataAttr = '';
       if (ids && ids.length > 0) {
         dataAttr = ' data-ids=\'' + JSON.stringify(ids) + '\' title="Нажмите для просмотра сделок"';
@@ -158,6 +157,67 @@ var ConfigRenderer = (function() {
 
     html += '</tr>';
     return html;
+  }
+
+  // Условное форматирование для рейтинга (как в Google Sheets)
+  function getRatingCellStyle(val, colIdx, row, headers) {
+    var hdr = (headers && headers[0] && headers[0][colIdx]) ? String(headers[0][colIdx]).toLowerCase() : '';
+    var numVal = typeof val === 'number' ? val : parseFloat(String(val).replace(/[$%,\s]/g, ''));
+
+    // Место (#) — 1 жёлтый, 2-3 голубой
+    if (colIdx === 0 && typeof val === 'number') {
+      if (val === 1) return 'background-color:#fef08a;font-weight:700';
+      if (val <= 3) return 'background-color:#e0f2fe;font-weight:600';
+    }
+
+    // Статус
+    if (hdr.indexOf('статус') >= 0) {
+      var s = String(val).trim().toLowerCase();
+      if (s === 'лидер') return 'background-color:#dcfce7;color:#166534;font-weight:700';
+      if (s.indexOf('топ') >= 0) return 'background-color:#dbeafe;color:#1e40af;font-weight:600';
+      if (s === 'рентабельный') return 'background-color:#f0fdf4;color:#15803d';
+      if (s === 'убыточный') return 'background-color:#fef2f2;color:#dc2626;font-weight:600';
+    }
+
+    // % сжигания — градиент красный/зелёный
+    if (hdr.indexOf('сжиган') >= 0 || hdr.indexOf('burn') >= 0) {
+      var pct = parseFloat(String(val).replace('%', ''));
+      if (!isNaN(pct)) {
+        if (pct <= 20) return 'background-color:#bbf7d0;color:#166534'; // зелёный
+        if (pct <= 35) return 'background-color:#fef9c3;color:#854d0e'; // жёлтый
+        if (pct <= 50) return 'background-color:#fed7aa;color:#9a3412'; // оранжевый
+        return 'background-color:#fecaca;color:#991b1b'; // красный
+      }
+    }
+
+    // Валовая маржа — жёлтый градиент (чем больше, тем ярче)
+    if (hdr.indexOf('маржа') >= 0 || hdr.indexOf('margin') >= 0) {
+      if (!isNaN(numVal) && numVal > 0) {
+        var intensity = Math.min(numVal / 50000, 1);
+        var r = Math.round(255 - intensity * 10);
+        var g = Math.round(255 - intensity * 20);
+        var b = Math.round(200 - intensity * 100);
+        return 'background-color:rgb(' + r + ',' + g + ',' + b + ');color:#854d0e;font-weight:600';
+      }
+    }
+
+    // Личный вклад — зелёный/красный
+    if (hdr.indexOf('вклад') >= 0 || hdr.indexOf('contribution') >= 0) {
+      if (!isNaN(numVal)) {
+        if (numVal > 0) return 'background-color:#dcfce7;color:#166534;font-weight:600';
+        if (numVal < 0) return 'background-color:#fecaca;color:#991b1b;font-weight:600';
+      }
+    }
+
+    // Затраты на MQL — градиент
+    if (hdr.indexOf('затрат') >= 0 || hdr.indexOf('cost') >= 0) {
+      if (!isNaN(numVal) && numVal > 0) {
+        var int2 = Math.min(numVal / 15000, 1);
+        return 'background-color:rgb(255,' + Math.round(255 - int2 * 60) + ',' + Math.round(220 - int2 * 120) + ')';
+      }
+    }
+
+    return null;
   }
 
   // ============ Диаграмма стакана ============

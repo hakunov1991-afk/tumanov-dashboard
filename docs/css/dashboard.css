@@ -40,12 +40,12 @@
 .dash-table th {
   background: linear-gradient(180deg, #1e40af 0%, #1e3a8a 100%);
   color: #fff;
-  padding: 8px 10px;
+  padding: 5px 6px;
   text-align: center;
   font-weight: 600;
-  font-size: 11px;
+  font-size: 10px;
   text-transform: uppercase;
-  letter-spacing: 0.03em;
+  letter-spacing: 0.02em;
   border: 1px solid #1e3a8a;
   white-space: nowrap;
   position: sticky;
@@ -53,12 +53,13 @@
   z-index: 2;
 }
 .dash-table td {
-  padding: 6px 10px;
+  padding: 4px 6px;
   border: 1px solid #e2e8f0;
   text-align: center;
   white-space: nowrap;
   font-variant-numeric: tabular-nums;
   transition: background-color 0.1s;
+  font-size: 12px;
 }
 .dash-table td:first-child {
   text-align: left;
