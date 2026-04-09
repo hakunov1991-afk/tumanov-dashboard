@@ -67,24 +67,39 @@ var ConfigRenderer = (function() {
     }
 
     // Данные
+    var fmtFn = getFormattingFn(tbl.id);
     if (tbl.rows) {
       for (var r = 0; r < tbl.rows.length; r++) {
-        html += renderDataRow(tbl.rows[r], false);
+        html += renderDataRow(tbl.rows[r], false, fmtFn, tbl.id);
       }
     }
 
     // Итого
     if (tbl.totals) {
-      html += renderDataRow(tbl.totals, true);
+      html += renderDataRow(tbl.totals, true, null, tbl.id);
     }
 
     html += '</table></div></div>';
     return html;
   }
 
-  function renderDataRow(row, isTotal) {
+  // Маппинг ID таблицы → функция форматирования из Formatting
+  function getFormattingFn(tableId) {
+    if (!tableId) return null;
+    var id = tableId.toLowerCase();
+    if (id === 't1') return Formatting.T1;
+    if (id === 't2') return Formatting.T2;
+    if (id === 't3' || id === 't11') return Formatting.T3;
+    if (id === 't8') return Formatting.T8;
+    if (id === 't9') return Formatting.T9;
+    if (id === 'bt') return Formatting.BT;
+    return null;
+  }
+
+  function renderDataRow(row, isTotal, fmtFn, tableId) {
     if (!row) return '';
     var html = '<tr' + (isTotal ? ' class="total-row"' : '') + '>';
+    var isDeltaTable = (tableId === 't1'); // T1 имеет дельта-столбцы
 
     for (var c = 0; c < row.length; c++) {
       var raw = row[c];
@@ -103,11 +118,21 @@ var ConfigRenderer = (function() {
         style = ' style="font-weight:700;background-color:#eef2ff"';
       }
 
-      // Дельта (строки с + или -)
-      if (typeof val === 'string' && val.match(/^[+-]\d/)) {
+      // Дельта столбцы (последние 3 для T1)
+      if (isDeltaTable && !isTotal && c > 0 && typeof val === 'string' && val.match(/^[+-]\d/)) {
         var num = parseInt(val);
         var dColor = num > 0 ? '#dc2626' : num < 0 ? '#16a34a' : '#999';
         style = ' style="color:' + dColor + ';font-weight:600"';
+      }
+      // Условное форматирование по правилам таблицы
+      else if (!isTotal && c > 0 && fmtFn && val !== '' && val !== 0) {
+        var numVal = typeof val === 'number' ? val : parseFloat(val);
+        if (!isNaN(numVal) && numVal > 0) {
+          var fmt = fmtFn(numVal);
+          if (fmt) {
+            style = ' style="background-color:' + fmt.bg + ';color:' + fmt.color + '"';
+          }
+        }
       }
 
       // Имя (первый столбец)
@@ -119,7 +144,7 @@ var ConfigRenderer = (function() {
       var dataAttr = '';
       if (ids && ids.length > 0) {
         dataAttr = ' data-ids=\'' + JSON.stringify(ids) + '\' title="Нажмите для просмотра сделок"';
-        cls = ' class="cell-clickable"';
+        cls = (c === 0) ? ' class="cell-name cell-clickable"' : ' class="cell-clickable"';
       }
 
       html += '<td' + cls + style + dataAttr + '>' + esc(val) + '</td>';
