@@ -4,7 +4,7 @@
  */
 
 import { amoFetch } from './amo-client.js';
-import { AMO, BROKER_GROUP_ID } from './config.js';
+import { AMO, BROKER_GROUP_ID, FREE_LEAD_USER_ID } from './config.js';
 import { saveJson } from './utils.js';
 import { readFile } from 'fs/promises';
 import { join, dirname } from 'path';
@@ -41,9 +41,10 @@ export async function loadManagersFromAmo() {
 
     const managers = {};
     for (const user of allUsers) {
-      // Проверяем принадлежность к группе
       if (user.rights?.group_id === groupId) {
-        managers[String(user.id)] = user.name;
+        const uid = String(user.id);
+        if (uid === FREE_LEAD_USER_ID) continue; // Исключаем "Свободный лид"
+        managers[uid] = user.name;
       }
     }
 
