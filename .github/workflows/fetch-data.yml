@@ -2,8 +2,8 @@ name: Sync AMO Data
 
 on:
   schedule:
-    - cron: '7 19 * * *'    # 02:07 Phuket (T1+T2+T3+T4+T5+T7+T11)
-    - cron: '37 20 * * *'   # 03:37 Phuket (Circles+Schedule+BT+T8+T9+T10)
+    - cron: '7 19 * * *'    # 02:07 Phuket — tasks
+    - cron: '47 19 * * *'   # 02:47 Phuket — rating + cohort
   workflow_dispatch: {}      # Manual trigger
 
 permissions:
@@ -12,14 +12,14 @@ permissions:
 jobs:
   sync:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 45
 
     steps:
       - uses: actions/checkout@v4
 
       - uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '22'
 
       - name: Install dependencies
         run: cd scripts && npm ci
@@ -28,6 +28,16 @@ jobs:
         env:
           AMO_TOKEN: ${{ secrets.AMO_TOKEN }}
         run: cd scripts && node tasks-sync.js
+
+      - name: Run rating-sync
+        env:
+          AMO_TOKEN: ${{ secrets.AMO_TOKEN }}
+        run: cd scripts && node rating-sync.js
+
+      - name: Run cohort-sync
+        env:
+          AMO_TOKEN: ${{ secrets.AMO_TOKEN }}
+        run: cd scripts && node cohort-sync.js
 
       - name: Commit and push if changed
         run: |
