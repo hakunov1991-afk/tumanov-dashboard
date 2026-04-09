@@ -39,6 +39,16 @@ jobs:
           AMO_TOKEN: ${{ secrets.AMO_TOKEN }}
         run: cd scripts && node cohort-sync.js
 
+      - name: Run stats-sync
+        env:
+          AMO_TOKEN: ${{ secrets.AMO_TOKEN }}
+        run: cd scripts && node stats-sync.js
+
+      - name: Run interns-sync
+        env:
+          AMO_TOKEN: ${{ secrets.AMO_TOKEN }}
+        run: cd scripts && node interns-sync.js
+
       - name: Commit and push if changed
         run: |
           git config user.name "github-actions[bot]"

@@ -189,6 +189,73 @@ async function syncRatingBrokers(managers) {
   };
 }
 
+// ==================== ИТОГОВЫЙ РЕЙТИНГ (с баллами и статусами) ====================
+
+async function syncFinalRating(managers, monthData) {
+  console.log('Итоговый рейтинг: расчёт...');
+
+  // Берём последние 3 месяца
+  const monthKeys = Object.keys(monthData).slice(-3);
+
+  // Собираем суммарные данные по каждому менеджеру
+  const managerScores = [];
+
+  for (const [managerId, name] of Object.entries(managers)) {
+    let totalTaken = 0, totalMql = 0;
+    const allTakenIds = [], allMqlIds = [];
+
+    for (const mk of monthKeys) {
+      const data = monthData[mk]?.[managerId] || { taken: 0, mql: 0, takenIds: [], mqlIds: [] };
+      totalTaken += data.taken;
+      totalMql += data.mql;
+      allTakenIds.push(...data.takenIds);
+      allMqlIds.push(...data.mqlIds);
+    }
+
+    const burnPct = totalTaken > 0 ? Math.round((totalTaken - totalMql) / totalTaken * 100) : 0;
+
+    managerScores.push({
+      id: managerId,
+      name,
+      taken: totalTaken,
+      takenIds: allTakenIds,
+      mql: totalMql,
+      mqlIds: allMqlIds,
+      burnPct,
+    });
+  }
+
+  // Сортируем по MQL (убывание)
+  managerScores.sort((a, b) => b.mql - a.mql);
+
+  // Присваиваем места и статусы
+  const headers = ['#', 'Брокер', 'Взято в работу (тег MQL)', 'Прошёл шаг MQL', '% сжигания (не берём в рейтинг)', 'Статус'];
+  const rows = [];
+
+  for (let i = 0; i < managerScores.length; i++) {
+    const m = managerScores[i];
+    const place = i + 1;
+
+    let status;
+    if (place === 1) status = 'Лидер';
+    else if (place <= 3) status = 'ТОП ' + place;
+    else if (m.mql > 0) status = 'рентабельный';
+    else status = 'убыточный';
+
+    rows.push([
+      place,
+      m.name,
+      cell(m.taken, m.takenIds),
+      cell(m.mql, m.mqlIds),
+      m.burnPct + '%',
+      status,
+    ]);
+  }
+
+  console.log('Итоговый рейтинг: OK');
+  return rows;
+}
+
 // ==================== MAIN ====================
 
 async function main() {
@@ -205,9 +272,80 @@ async function main() {
     tables: [closureTable],
   });
 
-  // Рейтинг брокеров
+  // Рейтинг брокеров (помесячно)
   const ratingBrokersData = await syncRatingBrokers(managers);
   await saveJson(join(DATA_DIR, 'rating-brokerov.json'), ratingBrokersData);
+
+  // Итоговый рейтинг (последние 3 месяца)
+  // Переиспользуем monthData из ratingBrokers
+  const phuket = nowPhuket();
+  const months = [];
+  for (let i = 5; i >= 0; i--) {
+    const d = new Date(Date.UTC(phuket.getUTCFullYear(), phuket.getUTCMonth() - i, 1));
+    months.push({
+      key: String(d.getUTCMonth() + 1).padStart(2, '0') + '.' + d.getUTCFullYear(),
+      start: Math.floor(d.getTime() / 1000) - 7 * 3600,
+      end: Math.floor(new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + 1, 0, 23, 59, 59)).getTime() / 1000) - 7 * 3600,
+    });
+  }
+
+  // Собираем monthData заново (для рейтинга нужны последние 3 месяца)
+  const monthData = {};
+  for (const month of months.slice(-3)) {
+    const takenTransitions = await amoFetchTransitions(STAGES.TAKEN_TO_WORK, month.start, month.end);
+    const mqlTransitions = await amoFetchTransitions(STAGES.MQL, month.start, month.end);
+
+    const byManager = {};
+    for (const mId of Object.keys(managers)) byManager[mId] = { taken: 0, mql: 0, takenIds: [], mqlIds: [] };
+
+    const uniqueIds = [...new Set(takenTransitions.map(t => t.leadId))];
+    const leadsData = await amoFetchLeadsByIds(uniqueIds);
+    const leadResp = {};
+    for (const l of leadsData) leadResp[String(l.id)] = String(l.responsible_user_id);
+
+    for (const t of takenTransitions) {
+      const resp = leadResp[t.leadId] || t.managerId;
+      if (byManager[resp]) {
+        byManager[resp].taken++;
+        if (!byManager[resp].takenIds.includes(t.leadId)) byManager[resp].takenIds.push(t.leadId);
+      }
+    }
+
+    const mqlSet = new Set(mqlTransitions.map(t => t.leadId));
+    for (const [mId, data] of Object.entries(byManager)) {
+      data.mqlIds = data.takenIds.filter(id => mqlSet.has(id));
+      data.mql = data.mqlIds.length;
+    }
+
+    monthData[month.key] = byManager;
+  }
+
+  const ratingRows = await syncFinalRating(managers, monthData);
+  const ratingHeaders = ['#', 'Брокер', 'Взято в работу (тег MQL)', 'Прошёл шаг MQL', '% сжигания', 'Статус'];
+
+  // Формируем заголовок с датой
+  const last3 = months.slice(-3).map(m => m.key).join(' + ');
+
+  await saveJson(join(DATA_DIR, 'rating.json'), {
+    _meta: { sheet: 'Рейтинг', updated: new Date().toISOString() },
+    tables: [{
+      id: 'rating',
+      title: 'Рейтинг: ' + last3,
+      headers: [ratingHeaders],
+      rows: ratingRows,
+    }],
+  });
+
+  // Промежуточный рейтинг (текущий месяц + 2 предыдущих)
+  await saveJson(join(DATA_DIR, 'rating-promezhutochny.json'), {
+    _meta: { sheet: 'Рейтинг промежуточный', updated: new Date().toISOString() },
+    tables: [{
+      id: 'rating-interim',
+      title: 'Промежуточный рейтинг: ' + last3,
+      headers: [ratingHeaders],
+      rows: ratingRows,
+    }],
+  });
 
   console.log('=== Rating Sync завершён ===');
 }

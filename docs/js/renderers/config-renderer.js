@@ -80,6 +80,12 @@ var ConfigRenderer = (function() {
     }
 
     html += '</table></div></div>';
+
+    // Диаграмма для стакана
+    if (tbl.id === 'stakan') {
+      html += renderBarChart(tbl);
+    }
+
     return html;
   }
 
@@ -151,6 +157,63 @@ var ConfigRenderer = (function() {
     }
 
     html += '</tr>';
+    return html;
+  }
+
+  // ============ Диаграмма стакана ============
+
+  function renderBarChart(tbl) {
+    if (!tbl || !tbl.rows || tbl.id !== 'stakan') return '';
+    var html = '<div class="card"><div class="card-header">Сделки по кругам</div><div style="padding:20px">';
+    html += '<div style="display:flex;align-items:flex-end;gap:30px;height:200px;justify-content:center">';
+
+    var maxVal = 0;
+    for (var r = 0; r < tbl.rows.length; r++) {
+      var row = tbl.rows[r];
+      var total = row[3] && typeof row[3] === 'object' ? row[3].v : (row[3] || 0);
+      var overdue = row[5] && typeof row[5] === 'object' ? row[5].v : (row[5] || 0);
+      var inWork = row[4] && typeof row[4] === 'object' ? row[4].v : (row[4] || 0);
+      var otstoy = row[1] && typeof row[1] === 'object' ? row[1].v : (row[1] || 0);
+      if (total > maxVal) maxVal = total;
+    }
+    if (maxVal === 0) maxVal = 1;
+
+    var colors = { overdue: '#ef4444', inWork: '#22c55e', otstoy: '#f59e0b' };
+
+    for (var r2 = 0; r2 < tbl.rows.length; r2++) {
+      var row2 = tbl.rows[r2];
+      var name = row2[0];
+      var otstoy2 = row2[1] && typeof row2[1] === 'object' ? row2[1].v : (row2[1] || 0);
+      var stakan2 = row2[2] && typeof row2[2] === 'object' ? row2[2].v : (row2[2] || 0);
+      var total2 = row2[3] && typeof row2[3] === 'object' ? row2[3].v : (row2[3] || 0);
+      var inWork2 = row2[4] && typeof row2[4] === 'object' ? row2[4].v : (row2[4] || 0);
+      var overdue2 = row2[5] && typeof row2[5] === 'object' ? row2[5].v : (row2[5] || 0);
+
+      var barH = Math.max(total2 / maxVal * 180, 2);
+      var overdueH = total2 > 0 ? overdue2 / total2 * barH : 0;
+      var inWorkH = total2 > 0 ? inWork2 / total2 * barH : 0;
+      var otstoyH = total2 > 0 ? otstoy2 / total2 * barH : 0;
+      var restH = barH - overdueH - inWorkH - otstoyH;
+
+      html += '<div style="display:flex;flex-direction:column;align-items:center;width:80px">';
+      html += '<div style="font-size:12px;font-weight:700;margin-bottom:4px;color:#f59e0b">' + otstoy2 + '</div>';
+      html += '<div style="display:flex;flex-direction:column-reverse;width:50px">';
+      html += '<div style="height:' + overdueH + 'px;background:' + colors.overdue + ';border-radius:0 0 4px 4px"></div>';
+      html += '<div style="height:' + inWorkH + 'px;background:' + colors.inWork + '"></div>';
+      html += '<div style="height:' + otstoyH + 'px;background:' + colors.otstoy + '"></div>';
+      html += '<div style="height:' + restH + 'px;background:#94a3b8;border-radius:4px 4px 0 0"></div>';
+      html += '</div>';
+      html += '<div style="font-size:11px;margin-top:6px;font-weight:600">' + esc(name) + '</div>';
+      html += '<div style="font-size:10px;color:#64748b">' + total2 + ' всего</div>';
+      html += '</div>';
+    }
+
+    html += '</div>';
+    html += '<div style="display:flex;gap:16px;justify-content:center;margin-top:12px;font-size:11px">';
+    html += '<span><span style="display:inline-block;width:10px;height:10px;background:#ef4444;border-radius:2px;margin-right:4px"></span>Просрочены</span>';
+    html += '<span><span style="display:inline-block;width:10px;height:10px;background:#22c55e;border-radius:2px;margin-right:4px"></span>В работе</span>';
+    html += '<span><span style="display:inline-block;width:10px;height:10px;background:#f59e0b;border-radius:2px;margin-right:4px"></span>Отстойник</span>';
+    html += '</div></div></div>';
     return html;
   }
 
