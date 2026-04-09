@@ -6,6 +6,9 @@ on:
     - cron: '37 20 * * *'   # 03:37 Phuket (Circles+Schedule+BT+T8+T9+T10)
   workflow_dispatch: {}      # Manual trigger
 
+permissions:
+  contents: write
+
 jobs:
   sync:
     runs-on: ubuntu-latest
