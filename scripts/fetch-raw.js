@@ -9,7 +9,7 @@
 
 import { amoFetch, amoFetchAll, amoFetchLeadsByIds } from './lib/amo-client.js';
 import { AMO, STAGES, FIELDS } from './lib/config.js';
-import { getManagersFallback } from './lib/managers.js';
+import { loadManagersFromAmo } from './lib/managers.js';
 import { saveJson, nowPhuket } from './lib/utils.js';
 import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
@@ -197,8 +197,7 @@ async function main() {
     process.exit(1);
   }
 
-  const managers = getManagersFallback();
-  delete managers['12956222']; // Свободный лид
+  const managers = await loadManagersFromAmo();
   console.log(`Менеджеров: ${Object.keys(managers).length}`);
 
   const startTime = Date.now();

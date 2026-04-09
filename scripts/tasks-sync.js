@@ -8,7 +8,7 @@
 
 import { amoFetch, amoFetchAll, amoFetchTransitions } from './lib/amo-client.js';
 import { AMO, STAGES, FIELDS, PIPELINE_STAGES, BT_STAGES } from './lib/config.js';
-import { getManagersFallback } from './lib/managers.js';
+import { loadManagersFromAmo, loadManagersFromCache } from './lib/managers.js';
 import {
   cell, saveJson, nowPhuket, getStartOfDayPhuket, getEndOfDayPhuket,
   yesterdayStartPhuket, monthStartPhuket, secsToHours,
@@ -1123,9 +1123,11 @@ async function main() {
     process.exit(1);
   }
 
-  const managers = getManagersFallback();
-  // Убираем "Свободный лид" из списка менеджеров
-  delete managers['12956222'];
+  const managers = await loadManagersFromAmo();
+  if (Object.keys(managers).length === 0) {
+    console.error('Нет менеджеров! Проверь группу AMO.');
+    process.exit(1);
+  }
   console.log(`Менеджеров: ${Object.keys(managers).length}`);
 
   const tables = [];

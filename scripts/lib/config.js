@@ -108,5 +108,8 @@ export const SALES_SHEET = {
 };
 
 // Phuket timezone offset
+// Группа брокеров в AMO
+export const BROKER_GROUP_ID = 529606;
+
 export const PHUKET_OFFSET_HOURS = 7;
 export const PHUKET_OFFSET_SEC = 7 * 3600;
