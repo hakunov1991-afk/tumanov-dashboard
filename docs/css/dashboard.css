@@ -1,33 +1,44 @@
+/* ===== TUMANOV GROUP Brand Palette =====
+   Primary:    #0088CC (Tumanov Blue)
+   Navy:       #0D1B2A (Deep Navy)
+   Sand:       #C9A96E (Warm Sand / Premium)
+   Green:      #00B67A (Success)
+   Red:        #E53935 (Alert)
+   Background: #F5F7FA (Light Gray)
+   Text:       #2D3436 (Charcoal)
+   ===================================== */
+
 /* Nav links */
 .nav-link {
   display: block;
   padding: 8px 20px;
-  color: #94a3b8;
+  color: rgba(255,255,255,0.5);
   text-decoration: none;
   transition: all 0.2s;
   font-size: 13px;
   border-left: 3px solid transparent;
 }
-.nav-link:hover { background: rgba(255,255,255,0.05); color: #e2e8f0; border-left-color: #475569; }
-.nav-link.active { background: rgba(59,130,246,0.15); color: #60a5fa; font-weight: 600; border-left-color: #3b82f6; }
+.nav-link:hover { background: rgba(0,136,204,0.08); color: rgba(255,255,255,0.85); border-left-color: #0088CC; }
+.nav-link.active { background: rgba(0,136,204,0.15); color: #0088CC; font-weight: 600; border-left-color: #0088CC; }
 
 /* Cards */
 .card {
   background: #fff;
-  border-radius: 12px;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04);
-  margin-bottom: 24px;
+  border-radius: 10px;
+  box-shadow: 0 1px 3px rgba(13,27,42,0.06), 0 1px 2px rgba(13,27,42,0.04);
+  margin-bottom: 20px;
   overflow: hidden;
-  border: 1px solid #f1f5f9;
+  border: 1px solid #e8ecf0;
 }
 .card-header {
-  padding: 14px 20px;
+  padding: 12px 18px;
   font-weight: 700;
-  font-size: 14px;
-  color: #1e293b;
-  background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
-  border-bottom: 1px solid #e2e8f0;
-  letter-spacing: -0.01em;
+  font-size: 13px;
+  color: #0D1B2A;
+  background: #F5F7FA;
+  border-bottom: 1px solid #e8ecf0;
+  font-family: 'Montserrat', sans-serif;
+  letter-spacing: 0.01em;
 }
 
 /* Tables */
@@ -35,26 +46,27 @@
   width: 100%;
   border-collapse: separate;
   border-spacing: 0;
-  font-size: 13px;
+  font-size: 12px;
 }
 .dash-table th {
-  background: linear-gradient(180deg, #1e40af 0%, #1e3a8a 100%);
-  color: #fff;
-  padding: 5px 6px;
+  background: #0D1B2A;
+  color: rgba(255,255,255,0.9);
+  padding: 6px 6px;
   text-align: center;
   font-weight: 600;
   font-size: 10px;
   text-transform: uppercase;
-  letter-spacing: 0.02em;
-  border: 1px solid #1e3a8a;
+  letter-spacing: 0.03em;
+  border: 1px solid #162638;
   white-space: nowrap;
   position: sticky;
   top: 0;
   z-index: 2;
+  font-family: 'Montserrat', sans-serif;
 }
 .dash-table td {
   padding: 4px 6px;
-  border: 1px solid #e2e8f0;
+  border: 1px solid #e8ecf0;
   text-align: center;
   white-space: nowrap;
   font-variant-numeric: tabular-nums;
@@ -64,27 +76,28 @@
 .dash-table td:first-child {
   text-align: left;
   font-weight: 500;
-  background: #f8fafc;
+  background: #FAFBFC;
   position: sticky;
   left: 0;
   z-index: 1;
-  border-right: 2px solid #cbd5e1;
+  border-right: 2px solid #d0d7de;
+  color: #0D1B2A;
 }
-.dash-table tr:nth-child(even) td { background-color: #fafbfc; }
-.dash-table tr:nth-child(even) td:first-child { background-color: #f1f5f9; }
-.dash-table tr:hover td { background-color: #eff6ff !important; }
-.dash-table tr:hover td:first-child { background-color: #dbeafe !important; }
+.dash-table tr:nth-child(even) td { background-color: #FAFBFC; }
+.dash-table tr:nth-child(even) td:first-child { background-color: #F5F7FA; }
+.dash-table tr:hover td { background-color: rgba(0,136,204,0.06) !important; }
+.dash-table tr:hover td:first-child { background-color: rgba(0,136,204,0.1) !important; }
 
 /* Scrollable table wrapper */
 .table-scroll {
   overflow-x: auto;
   max-width: 100%;
   scrollbar-width: thin;
-  scrollbar-color: #cbd5e1 transparent;
+  scrollbar-color: #c0c8d0 transparent;
 }
-.table-scroll::-webkit-scrollbar { height: 6px; }
+.table-scroll::-webkit-scrollbar { height: 5px; }
 .table-scroll::-webkit-scrollbar-track { background: transparent; }
-.table-scroll::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
+.table-scroll::-webkit-scrollbar-thumb { background: #c0c8d0; border-radius: 3px; }
 
 /* Responsive sidebar */
 @media (max-width: 1023px) {

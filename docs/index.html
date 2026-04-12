@@ -3,44 +3,46 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Tumanov CRM Dashboard</title>
+  <title>Tumanov Group — CRM Dashboard</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Montserrat:wght@600;700;900&display=swap" rel="stylesheet">
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="stylesheet" href="css/dashboard.css">
 </head>
-<body class="bg-gray-50 text-gray-900 min-h-screen flex">
+<body class="min-h-screen flex" style="background:#F5F7FA;color:#2D3436;font-family:'Inter',sans-serif">
 
   <!-- Sidebar -->
-  <aside id="sidebar" class="fixed top-0 left-0 h-full w-60 bg-slate-900 text-white flex flex-col z-30 transition-transform">
-    <div class="px-5 py-5 border-b border-slate-700">
-      <h1 class="text-lg font-bold tracking-wide">Tumanov CRM</h1>
-      <p id="updated-at" class="text-xs text-slate-400 mt-1"></p>
+  <aside id="sidebar" class="fixed top-0 left-0 h-full w-60 flex flex-col z-30 transition-transform" style="background:#0D1B2A">
+    <div class="px-5 py-5" style="border-bottom:1px solid rgba(255,255,255,0.1)">
+      <h1 class="text-lg font-bold tracking-wide" style="font-family:'Montserrat',sans-serif;color:#0088CC">TUMANOV GROUP</h1>
+      <p id="updated-at" class="text-xs mt-1" style="color:rgba(255,255,255,0.35)"></p>
     </div>
     <nav class="flex-1 overflow-y-auto py-3 text-sm">
-      <p class="px-5 py-1 text-xs uppercase text-slate-500 tracking-wider">Задачи</p>
+      <p class="px-5 py-1 text-xs uppercase tracking-wider" style="color:rgba(255,255,255,0.25)">Задачи</p>
       <a href="#/tasks" class="nav-link" data-route="tasks">Задачи</a>
       <a href="#/broker-tasks" class="nav-link" data-route="broker-tasks">Задачи брокеров</a>
 
-      <p class="px-5 py-1 mt-3 text-xs uppercase text-slate-500 tracking-wider">Рейтинг</p>
+      <p class="px-5 py-1 mt-3 text-xs uppercase tracking-wider" style="color:rgba(255,255,255,0.25)">Рейтинг</p>
       <a href="#/rating" class="nav-link" data-route="rating">Рейтинг</a>
       <a href="#/rating-brokers" class="nav-link" data-route="rating-brokers">Рейтинг брокеров</a>
       <a href="#/rating-interim" class="nav-link" data-route="rating-interim">Рейтинг промежут.</a>
 
-      <p class="px-5 py-1 mt-3 text-xs uppercase text-slate-500 tracking-wider">Аналитика</p>
+      <p class="px-5 py-1 mt-3 text-xs uppercase tracking-wider" style="color:rgba(255,255,255,0.25)">Аналитика</p>
       <a href="#/statistics" class="nav-link" data-route="statistics">Статистика</a>
       <a href="#/cohort" class="nav-link" data-route="cohort">Когортный анализ</a>
       <a href="#/conversion2" class="nav-link" data-route="conversion2">Конверсия по неделям</a>
 
-      <p class="px-5 py-1 mt-3 text-xs uppercase text-slate-500 tracking-wider">Прочее</p>
+      <p class="px-5 py-1 mt-3 text-xs uppercase tracking-wider" style="color:rgba(255,255,255,0.25)">Прочее</p>
       <a href="#/interns" class="nav-link" data-route="interns">Стажеры</a>
       <a href="#/closure" class="nav-link" data-route="closure">Причины закрытия</a>
       <a href="#/heatmap" class="nav-link" data-route="heatmap">Тепловая карта</a>
       <a href="#/stakan" class="nav-link" data-route="stakan">Стакан 2/3/4 круг</a>
 
-      <p class="px-5 py-1 mt-3 text-xs uppercase text-slate-500 tracking-wider">Настройки</p>
+      <p class="px-5 py-1 mt-3 text-xs uppercase tracking-wider" style="color:rgba(255,255,255,0.25)">Настройки</p>
       <a href="#/config" class="nav-link" data-route="config">Редактор конфига</a>
     </nav>
-    <div class="px-5 py-3 border-t border-slate-700">
-      <button id="btn-refresh" class="w-full text-xs bg-slate-700 hover:bg-slate-600 rounded px-3 py-2 transition">
+    <div class="px-5 py-3" style="border-top:1px solid rgba(255,255,255,0.1)">
+      <button id="btn-refresh" class="w-full text-xs rounded px-3 py-2 transition" style="background:#0088CC;color:#fff;font-weight:600">
         Обновить данные
       </button>
     </div>
