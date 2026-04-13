@@ -23,8 +23,13 @@
   });
 
   // Refresh button
-  // Обновить = перезагрузить страницу (данные обновляются через GitHub Actions)
+  // Обновить = очистить кеш и перезагрузить (берёт свежие JSON из GitHub Pages)
   btnRefresh.addEventListener('click', function() {
+    // Очищаем кеш fetch (добавляем timestamp чтобы обойти CDN кеш)
+    caches && caches.keys && caches.keys().then(function(names) {
+      names.forEach(function(name) { caches.delete(name); });
+    });
+    // Перезагрузка с обходом кеша
     location.reload(true);
   });
 

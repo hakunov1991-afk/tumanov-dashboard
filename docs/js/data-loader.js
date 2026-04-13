@@ -43,7 +43,7 @@ var DataLoader = (function() {
 
   function loadMeta() {
     if (meta) return Promise.resolve(meta);
-    return fetch('data/meta.json')
+    return fetch('data/meta.json?t=' + Date.now())
       .then(function(r) { return r.json(); })
       .then(function(d) { meta = d; return d; })
       .catch(function() { return null; });
@@ -61,10 +61,10 @@ var DataLoader = (function() {
   }
 
   function loadSheet(routeKey) {
-    if (cache[routeKey]) return Promise.resolve(cache[routeKey]);
+    // Без кеша — всегда свежие данные
     var resolved = _resolveSheet(routeKey);
     if (!resolved.fileName) return Promise.resolve(null);
-    return fetch('data/sheets/' + resolved.fileName + '.json')
+    return fetch('data/sheets/' + resolved.fileName + '.json?t=' + Date.now())
       .then(function(r) { return r.json(); })
       .then(function(d) {
         var sheetData = d.sheets ? d.sheets[resolved.sheetName] : d;
