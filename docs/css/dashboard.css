@@ -41,35 +41,40 @@
   letter-spacing: 0.01em;
 }
 
-/* Tables — clean data-first design */
+/* Tables — fit to screen width, data-first design */
 .dash-table {
   width: 100%;
   border-collapse: collapse;
   font-size: 12px;
   line-height: 1.4;
+  table-layout: fixed; /* Столбцы по ширине содержимого */
 }
 
-/* Заголовки — скромнее данных, sticky */
+/* Заголовки — переносятся по словам, компактные */
 .dash-table th {
   background: #0D1B2A;
   color: rgba(255,255,255,0.85);
-  padding: 7px 8px;
+  padding: 6px 4px;
   text-align: center;
   font-weight: 600;
-  font-size: 10px;
+  font-size: 9px;
   text-transform: uppercase;
-  letter-spacing: 0.03em;
+  letter-spacing: 0.02em;
   border-bottom: 2px solid #0088CC;
-  white-space: nowrap;
+  white-space: normal;        /* ПЕРЕНОС по словам */
+  word-wrap: break-word;
+  overflow-wrap: break-word;
   position: sticky;
   top: 0;
   z-index: 2;
   font-family: 'Montserrat', sans-serif;
+  vertical-align: bottom;
+  line-height: 1.3;
 }
 
-/* Ячейки данных — числа по центру, компактно */
+/* Ячейки данных */
 .dash-table td {
-  padding: 5px 8px;
+  padding: 4px 5px;
   border-bottom: 1px solid #edf0f3;
   text-align: right;
   white-space: nowrap;
@@ -78,7 +83,7 @@
   font-size: 12px;
 }
 
-/* Первый столбец — имя брокера, sticky */
+/* Первый столбец — имя брокера, sticky, перенос по словам */
 .dash-table td:first-child {
   text-align: left;
   font-weight: 500;
@@ -88,38 +93,34 @@
   z-index: 1;
   border-right: 1px solid #dde1e5;
   color: #0D1B2A;
-  max-width: 150px;
-  width: 130px;
-  min-width: 90px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  font-size: 12px;
+  white-space: normal;
+  word-wrap: break-word;
+  font-size: 11px;
+  min-width: 80px;
 }
 .dash-table th:first-child {
   text-align: left;
-  max-width: 150px;
-  width: 130px;
-  min-width: 90px;
   position: sticky;
   left: 0;
   z-index: 3;
+  min-width: 80px;
 }
 
-/* Hover — подсветка строки, НЕ перебивает условное форматирование */
+/* Hover — НЕ сбрасывает фон окрашенных ячеек */
 .dash-table tr:hover td:not([style]) {
   background-color: rgba(0,136,204,0.05);
 }
 .dash-table tr:hover td:first-child:not([style]) {
   background-color: rgba(0,136,204,0.08);
 }
-/* Окрашенные ячейки — лёгкое затемнение при hover, текст не сливается */
+/* Окрашенные ячейки при hover — только лёгкое затемнение, фон НЕ сбрасывается */
 .dash-table tr:hover td[style] {
-  filter: brightness(0.95);
+  filter: brightness(0.92);
 }
 
-/* Чередование строк — еле заметное */
+/* Чередование строк */
 .dash-table tr:nth-child(even) td:not([style]) { background-color: #fafbfd; }
-.dash-table tr:nth-child(even) td:first-child { background-color: #f8f9fb; }
+.dash-table tr:nth-child(even) td:first-child:not([style]) { background-color: #f8f9fb; }
 
 /* Scrollable table wrapper */
 .table-scroll {

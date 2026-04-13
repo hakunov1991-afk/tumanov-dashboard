@@ -323,25 +323,33 @@ async function main() {
   const ratingRows = await syncFinalRating(managers, monthData);
   const ratingHeaders = ['#', 'Брокер', 'Взято в работу (тег MQL)', 'Прошёл шаг MQL', '% сжигания', 'Статус'];
 
-  // Формируем заголовок с датой
-  const last3 = months.slice(-3).map(m => m.key).join(' + ');
+  const now = new Date();
+  const dateStr = now.toLocaleDateString('ru-RU', { timeZone: 'Asia/Bangkok' }) + ' ' +
+    now.toLocaleTimeString('ru-RU', { timeZone: 'Asia/Bangkok', hour: '2-digit', minute: '2-digit' });
+
+  // Рейтинг — за последние 3 полных месяца
+  const m3 = months.slice(-3);
+  const ratingPeriod = '01.' + m3[0].key + '-' + new Date(Date.UTC(phuket.getUTCFullYear(), phuket.getUTCMonth(), 0)).getUTCDate() + '.' + m3[2].key;
 
   await saveJson(join(DATA_DIR, 'rating.json'), {
-    _meta: { sheet: 'Рейтинг', updated: new Date().toISOString() },
+    _meta: { sheet: 'Рейтинг', updated: now.toISOString() },
     tables: [{
       id: 'rating',
-      title: 'Рейтинг: ' + last3,
+      title: 'Период: ' + ratingPeriod + '  |  Сформирован: ' + dateStr + '\n\uD83C\uDFC6 ВКЛАД ЗА ПРОШЕДШИЕ 3 МЕСЯЦА',
       headers: [ratingHeaders],
       rows: ratingRows,
     }],
   });
 
-  // Промежуточный рейтинг (текущий месяц + 2 предыдущих)
+  // Промежуточный рейтинг — 2 прошедших + текущий
+  const interimEnd = now.toLocaleDateString('ru-RU', { timeZone: 'Asia/Bangkok' });
+  const interimPeriod = '01.' + m3[0].key + ' - ' + interimEnd;
+
   await saveJson(join(DATA_DIR, 'rating-promezhutochny.json'), {
-    _meta: { sheet: 'Рейтинг промежуточный', updated: new Date().toISOString() },
+    _meta: { sheet: 'Рейтинг промежуточный', updated: now.toISOString() },
     tables: [{
       id: 'rating-interim',
-      title: 'Промежуточный рейтинг: ' + last3,
+      title: 'Период: ' + interimPeriod + '  |  Сформирован: ' + dateStr + '\n\uD83C\uDFC6 Вклад за прошедшие 2 месяца + последняя неделя текущего месяца',
       headers: [ratingHeaders],
       rows: ratingRows,
     }],

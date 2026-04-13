@@ -89,16 +89,27 @@
     var route = getRoute();
     updateActiveNav(route);
 
-    // Config editor — special route, no data loading
-    if (route === 'config') {
-      loading.classList.add('hidden');
-      view.classList.remove('hidden');
-      ConfigEditor.render(view);
-      return;
-    }
-
     loading.classList.remove('hidden');
     view.classList.add('hidden');
+
+    // Задачи = Задачи + Задачи брокеров (объединённая страница)
+    if (route === 'tasks') {
+      Promise.all([
+        DataLoader.loadSheet('tasks'),
+        DataLoader.loadSheet('broker-tasks')
+      ]).then(function(results) {
+        var tasksData = results[0];
+        var btData = results[1];
+        // Объединяем таблицы
+        if (tasksData && tasksData.tables && btData && btData.tables) {
+          tasksData.tables = tasksData.tables.concat(btData.tables);
+        }
+        loading.classList.add('hidden');
+        view.classList.remove('hidden');
+        renderRoute(route, tasksData);
+      });
+      return;
+    }
 
     DataLoader.loadSheet(route).then(function(data) {
       loading.classList.add('hidden');

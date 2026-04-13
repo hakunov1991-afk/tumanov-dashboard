@@ -51,7 +51,8 @@ var ConfigRenderer = (function() {
   function renderNewTable(tbl) {
     if (!tbl) return '';
 
-    var html = '<div class="card"><div class="card-header">' + esc(tbl.title || '') + '</div>';
+    var titleHtml = esc(tbl.title || '').replace(/\n/g, '<br>');
+    var html = '<div class="card"><div class="card-header">' + titleHtml + '</div>';
     html += '<div class="table-scroll"><table class="dash-table">';
 
     // Заголовки
