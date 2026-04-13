@@ -52,8 +52,8 @@ var ConfigRenderer = (function() {
     if (!tbl) return '';
 
     var titleHtml = esc(tbl.title || '').replace(/\n/g, '<br>');
-    var syncBtnHtml = '<button class="card-sync-btn" data-table-id="' + (tbl.id || '') + '" title="Обновить эту таблицу">\u21BB</button>';
-    var html = '<div class="card"><div class="card-header" style="display:flex;align-items:center;justify-content:space-between">' +
+    var syncBtnHtml = '<button class="card-sync-btn" data-table-id="' + (tbl.id || '') + '">Обновить таблицу</button>';
+    var html = '<div class="card"><div class="card-header" style="display:flex;align-items:center;justify-content:space-between;gap:8px">' +
       '<span>' + titleHtml + '</span>' + syncBtnHtml + '</div>';
     html += '<div class="table-scroll"><table class="dash-table">';
 
@@ -63,7 +63,11 @@ var ConfigRenderer = (function() {
         html += '<tr>';
         var hrow = tbl.headers[h];
         for (var hc = 0; hc < hrow.length; hc++) {
-          html += '<th>' + esc(hrow[hc]) + '</th>';
+          var thStyle = '';
+          var hval = String(hrow[hc] || '');
+          // Дельта-столбцы — одинаковая узкая ширина
+          if (hval.match(/^Δ\d?$/)) thStyle = ' style="width:35px;min-width:35px"';
+          html += '<th' + thStyle + '>' + esc(hrow[hc]) + '</th>';
         }
         html += '</tr>';
       }
