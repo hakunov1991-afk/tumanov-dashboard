@@ -1006,42 +1006,74 @@ async function syncT9(managers) {
 
 // ==================== T10: ПРОСРОЧКИ ПО ДНЯМ ====================
 
-function buildT10(managers, t10Data) {
+async function buildT10(managers, t10Data) {
   console.log('T10: Просрочки по дням...');
   const phuket = nowPhuket();
-  const daysInMonth = new Date(Date.UTC(phuket.getUTCFullYear(), phuket.getUTCMonth() + 1, 0)).getUTCDate();
+  const year = phuket.getUTCFullYear();
+  const month = phuket.getUTCMonth();
+  const daysInMonth = new Date(Date.UTC(year, month + 1, 0)).getUTCDate();
   const todayDay = phuket.getUTCDate();
+  const monthKey = String(month + 1).padStart(2, '0') + '.' + year;
 
+  // Загружаем историю T10 из файла
+  const t10HistoryPath = join(STATE_DIR, 't10-history.json');
+  let history = {};
+  try {
+    const raw = await readFile(t10HistoryPath, 'utf-8');
+    history = JSON.parse(raw);
+  } catch {}
+
+  // Если новый месяц — сбрасываем
+  if (history._monthKey !== monthKey) {
+    history = { _monthKey: monthKey };
+    console.log(`  T10: Новый месяц ${monthKey}, история сброшена`);
+  }
+
+  // Записываем сегодняшний день
+  if (!history.days) history.days = {};
+  history.days[todayDay] = {};
+  for (const [managerId, data] of Object.entries(t10Data)) {
+    history.days[todayDay][managerId] = data;
+  }
+
+  // Сохраняем историю
+  await writeFile(t10HistoryPath, JSON.stringify(history, null, 2), 'utf-8');
+
+  // Формируем таблицу из накопленной истории
   const dayHeaders = [];
   for (let d = 1; d <= daysInMonth; d++) dayHeaders.push(String(d));
   const headers = ['Брокер', ...dayHeaders, 'ИТОГО'];
 
   const rows = [];
-  let dayTotal = 0;
+  const dayTotals = new Array(daysInMonth).fill(0);
+  let grandTotal = 0;
 
   for (const [managerId, name] of Object.entries(managers)) {
     const rowCells = [name];
-    const data = t10Data[managerId] || { total: 0, ids: [] };
+    let rowTotal = 0;
 
     for (let d = 1; d <= daysInMonth; d++) {
-      if (d === todayDay) {
-        rowCells.push(cell(data.total, data.ids.map(String)));
-        dayTotal += data.total;
+      const dayData = history.days?.[d]?.[managerId];
+      if (dayData) {
+        rowCells.push(cell(dayData.total, (dayData.ids || []).map(String)));
+        rowTotal += dayData.total;
+        dayTotals[d - 1] += dayData.total;
       } else {
-        rowCells.push(''); // Исторические дни заполняются при каждом запуске
+        rowCells.push('');
       }
     }
-    rowCells.push(data.total);
+    rowCells.push(rowTotal > 0 ? rowTotal : '');
+    grandTotal += rowTotal;
     rows.push(rowCells);
   }
 
   const totalRow = ['ИТОГО'];
-  for (let d = 1; d <= daysInMonth; d++) {
-    totalRow.push(d === todayDay ? dayTotal : '');
+  for (let d = 0; d < daysInMonth; d++) {
+    totalRow.push(dayTotals[d] > 0 ? dayTotals[d] : '');
   }
-  totalRow.push(dayTotal);
+  totalRow.push(grandTotal > 0 ? grandTotal : '');
 
-  console.log(`T10: OK, ${dayTotal} просрочек сегодня`);
+  console.log(`T10: OK, день ${todayDay}: ${t10Data[Object.keys(t10Data)[0]]?.total || 0} просрочек, всего дней в истории: ${Object.keys(history.days).length}`);
   return { id: 't10', title: 'T10: Количество просрочек по дням', headers: [headers], rows, totals: totalRow };
 }
 
@@ -1273,7 +1305,7 @@ async function main() {
   btTables.push(await syncT9(managers));
 
   // T10
-  btTables.push(buildT10(managers, t10Data));
+  btTables.push(await buildT10(managers, t10Data));
 
   const btOutput = {
     _meta: {
