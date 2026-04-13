@@ -52,7 +52,9 @@ var ConfigRenderer = (function() {
     if (!tbl) return '';
 
     var titleHtml = esc(tbl.title || '').replace(/\n/g, '<br>');
-    var html = '<div class="card"><div class="card-header">' + titleHtml + '</div>';
+    var syncBtnHtml = '<button class="card-sync-btn" data-table-id="' + (tbl.id || '') + '" title="Обновить эту таблицу">\u21BB</button>';
+    var html = '<div class="card"><div class="card-header" style="display:flex;align-items:center;justify-content:space-between">' +
+      '<span>' + titleHtml + '</span>' + syncBtnHtml + '</div>';
     html += '<div class="table-scroll"><table class="dash-table">';
 
     // Заголовки
@@ -282,6 +284,17 @@ var ConfigRenderer = (function() {
 
   function bindCellClicks(container) {
     container.addEventListener('click', function(e) {
+      // Кнопка обновления таблицы
+      var syncBtn = e.target.closest('.card-sync-btn');
+      if (syncBtn) {
+        var route = location.hash.replace('#/', '') || 'tasks';
+        syncBtn.textContent = '...';
+        syncBtn.style.color = '#0088CC';
+        GitHubSync.dispatchForRoute(route, syncBtn);
+        setTimeout(function() { syncBtn.textContent = '\u21BB'; }, 8000);
+        return;
+      }
+
       var td = e.target.closest('td[data-ids]');
       if (!td) return;
 

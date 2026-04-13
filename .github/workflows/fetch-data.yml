@@ -1,105 +1,44 @@
-name: Sync AMO Data
+name: Sync All
 
 on:
   schedule:
-    - cron: '7 19 * * *'    # 02:07 Phuket
+    - cron: '7 19 * * *'
   workflow_dispatch: {}
 
 concurrency:
-  group: sync-amo
+  group: sync-all
   cancel-in-progress: true
 
 permissions:
   contents: write
 
 jobs:
-  # Параллельные jobs — каждый скрипт отдельно
   tasks:
-    runs-on: ubuntu-latest
-    timeout-minutes: 20
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with: { node-version: '22' }
-      - run: cd scripts && npm ci
-      - name: Run tasks-sync
-        env: { AMO_TOKEN: '${{ secrets.AMO_TOKEN }}' }
-        run: cd scripts && node tasks-sync.js
-      - uses: actions/upload-artifact@v4
-        with:
-          name: tasks-data
-          path: docs/data/
-
+    uses: ./.github/workflows/sync-tasks.yml
+    secrets: inherit
   rating:
-    runs-on: ubuntu-latest
-    timeout-minutes: 20
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with: { node-version: '22' }
-      - run: cd scripts && npm ci
-      - name: Run rating-sync
-        env: { AMO_TOKEN: '${{ secrets.AMO_TOKEN }}' }
-        run: cd scripts && node rating-sync.js
-      - uses: actions/upload-artifact@v4
-        with:
-          name: rating-data
-          path: docs/data/
-
+    uses: ./.github/workflows/sync-rating.yml
+    secrets: inherit
   cohort:
-    runs-on: ubuntu-latest
-    timeout-minutes: 20
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with: { node-version: '22' }
-      - run: cd scripts && npm ci
-      - name: Run cohort + stats + interns
-        env: { AMO_TOKEN: '${{ secrets.AMO_TOKEN }}' }
-        run: |
-          cd scripts
-          node cohort-sync.js
-          node stats-sync.js
-          node interns-sync.js
-      - uses: actions/upload-artifact@v4
-        with:
-          name: cohort-data
-          path: docs/data/
+    uses: ./.github/workflows/sync-cohort.yml
+    secrets: inherit
+  stats:
+    uses: ./.github/workflows/sync-stats.yml
+    secrets: inherit
 
-  # Merge и push — после всех параллельных jobs
   commit:
-    needs: [tasks, rating, cohort]
+    needs: [tasks, rating, cohort, stats]
     runs-on: ubuntu-latest
-    timeout-minutes: 5
     steps:
       - uses: actions/checkout@v4
-
       - uses: actions/download-artifact@v4
-        with:
-          name: tasks-data
-          path: docs/data/
-
-      - uses: actions/download-artifact@v4
-        with:
-          name: rating-data
-          path: docs/data/
-          merge-multiple: true
-
-      - uses: actions/download-artifact@v4
-        with:
-          name: cohort-data
-          path: docs/data/
-          merge-multiple: true
-
-      - name: Commit and push
+        with: { path: docs/data/, merge-multiple: true }
+      - name: Push
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add docs/data/
-          if git diff --cached --quiet; then
-            echo "No changes"
-          else
-            git commit -m "sync: update $(date -u +%Y-%m-%dT%H:%M:%SZ)"
-            git pull --rebase origin master || true
-            git push origin master
-          fi
+          git diff --cached --quiet && echo "No changes" && exit 0
+          git commit -m "sync: $(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          git pull --rebase origin master || true
+          git push origin master

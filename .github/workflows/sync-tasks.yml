@@ -1,0 +1,31 @@
+name: Sync Tasks
+on:
+  workflow_dispatch: {}
+  workflow_call: {}
+
+permissions:
+  contents: write
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: '22' }
+      - run: cd scripts && npm ci
+      - env: { AMO_TOKEN: '${{ secrets.AMO_TOKEN }}' }
+        run: cd scripts && node tasks-sync.js
+      - uses: actions/upload-artifact@v4
+        with: { name: tasks-data, path: docs/data/sheets/zadachi*.json }
+      - name: Direct push (standalone run)
+        if: github.event_name == 'workflow_dispatch'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add docs/data/
+          git diff --cached --quiet && exit 0
+          git commit -m "sync tasks: $(date -u +%H:%M)"
+          git pull --rebase origin master || true
+          git push origin master

@@ -23,14 +23,10 @@
   });
 
   // Refresh button
-  // Обновить = очистить кеш и перезагрузить (берёт свежие JSON из GitHub Pages)
+  // Обновить все данные — запускает GitHub Actions workflow
+  var syncStatus = document.getElementById('sync-status');
   btnRefresh.addEventListener('click', function() {
-    // Очищаем кеш fetch (добавляем timestamp чтобы обойти CDN кеш)
-    caches && caches.keys && caches.keys().then(function(names) {
-      names.forEach(function(name) { caches.delete(name); });
-    });
-    // Перезагрузка с обходом кеша
-    location.reload(true);
+    GitHubSync.dispatchAll(syncStatus);
   });
 
   function getRoute() {

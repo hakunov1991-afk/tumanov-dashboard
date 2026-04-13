@@ -192,6 +192,24 @@
 .cfg-row-highlight { background: #dbeafe !important; }
 .cfg-row-highlight td { background: #dbeafe !important; }
 
+/* Card sync button */
+.card-sync-btn {
+  background: none;
+  border: 1px solid #d0d7de;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+  color: #64748b;
+  padding: 2px 8px;
+  transition: all 0.2s;
+  line-height: 1;
+}
+.card-sync-btn:hover {
+  background: #0088CC;
+  color: #fff;
+  border-color: #0088CC;
+}
+
 /* ===== Clickable cells with deal IDs ===== */
 .cell-clickable {
   cursor: pointer;
