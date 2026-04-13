@@ -85,6 +85,14 @@
     loading.classList.remove('hidden');
     view.classList.add('hidden');
 
+    // Рейтинг — с выбором периода из базы
+    if (route === 'rating') {
+      loading.classList.add('hidden');
+      view.classList.remove('hidden');
+      RatingPeriod.renderSelector(view);
+      return;
+    }
+
     // Задачи = Задачи + Задачи брокеров (объединённая страница)
     if (route === 'tasks') {
       Promise.all([
