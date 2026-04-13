@@ -45,16 +45,31 @@ var GitHubSync = (function() {
     return null;
   }
 
+  var runningWorkflows = {};
+
   function dispatch(workflowFile, statusEl) {
+    // Защита от повторного нажатия — пока workflow запущен, не запускать снова
+    if (runningWorkflows[workflowFile]) {
+      if (statusEl) {
+        statusEl.textContent = 'Уже обновляется...';
+        statusEl.style.color = '#C9A96E';
+      }
+      return;
+    }
+
     var token = getToken();
     if (!token) {
       token = promptToken();
       if (!token) return;
     }
 
+    runningWorkflows[workflowFile] = true;
     if (statusEl) {
       statusEl.textContent = 'Запуск...';
       statusEl.style.color = '#0088CC';
+      statusEl.disabled = true;
+      statusEl.style.opacity = '0.6';
+      statusEl.style.pointerEvents = 'none';
     }
 
     fetch('https://api.github.com/repos/' + REPO + '/actions/workflows/' + workflowFile + '/dispatches', {
@@ -68,29 +83,45 @@ var GitHubSync = (function() {
     .then(function(resp) {
       if (resp.status === 204) {
         if (statusEl) {
-          statusEl.textContent = '\u2713 Запущено! Данные обновятся через 5-10 мин';
+          statusEl.textContent = '\u2713 Запущено! Обновится через 5-10 мин';
           statusEl.style.color = '#00B67A';
-          setTimeout(function() { statusEl.textContent = ''; }, 10000);
         }
+        // Разблокировка через 10 минут (workflow закончится)
+        setTimeout(function() {
+          delete runningWorkflows[workflowFile];
+          if (statusEl) {
+            statusEl.textContent = 'Обновить таблицу';
+            statusEl.style.opacity = '1';
+            statusEl.style.pointerEvents = '';
+            statusEl.disabled = false;
+          }
+        }, 600000);
       } else if (resp.status === 401 || resp.status === 403) {
         localStorage.removeItem(TOKEN_KEY);
+        delete runningWorkflows[workflowFile];
         if (statusEl) {
-          statusEl.textContent = '\u2717 Токен недействителен. Попробуйте снова.';
+          statusEl.textContent = '\u2717 Токен недействителен';
           statusEl.style.color = '#E53935';
+          statusEl.style.opacity = '1';
+          statusEl.style.pointerEvents = '';
         }
       } else {
-        resp.text().then(function(t) {
-          if (statusEl) {
-            statusEl.textContent = '\u2717 Ошибка: ' + resp.status;
-            statusEl.style.color = '#E53935';
-          }
-        });
+        delete runningWorkflows[workflowFile];
+        if (statusEl) {
+          statusEl.textContent = '\u2717 Ошибка: ' + resp.status;
+          statusEl.style.color = '#E53935';
+          statusEl.style.opacity = '1';
+          statusEl.style.pointerEvents = '';
+        }
       }
     })
     .catch(function(err) {
+      delete runningWorkflows[workflowFile];
       if (statusEl) {
         statusEl.textContent = '\u2717 Сетевая ошибка';
         statusEl.style.color = '#E53935';
+        statusEl.style.opacity = '1';
+        statusEl.style.pointerEvents = '';
       }
     });
   }

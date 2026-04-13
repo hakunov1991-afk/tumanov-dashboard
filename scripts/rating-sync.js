@@ -195,7 +195,8 @@ async function syncClosureReasons(managers) {
     reasonCounts[resp][reasonId].push(String(lead.id));
   }
 
-  const allReasonIds = [...new Set(Object.values(reasonCounts).flatMap(m => Object.keys(m).map(Number)))].sort((a, b) => a - b);
+  // Все enum'ы из структуры поля — динамически (новые причины появляются автоматически)
+  const allReasonIds = Object.keys(enums).map(Number).sort((a, b) => a - b);
   const headers = ['Брокер', ...allReasonIds.map(id => enums[id] || `Причина ${id}`), 'ИТОГО'];
   const rows = [];
   const reasonTotals = {};
