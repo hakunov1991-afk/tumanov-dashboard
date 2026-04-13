@@ -2,9 +2,13 @@ name: Sync AMO Data
 
 on:
   schedule:
-    - cron: '7 19 * * *'    # 02:07 Phuket — tasks
-    - cron: '47 19 * * *'   # 02:47 Phuket — rating + cohort
+    - cron: '7 19 * * *'    # 02:07 Phuket — один запуск в день
   workflow_dispatch: {}      # Manual trigger
+
+# Не запускать параллельно — если предыдущий ещё работает, отменить его
+concurrency:
+  group: sync-amo
+  cancel-in-progress: true
 
 permissions:
   contents: write
@@ -16,6 +20,8 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
 
       - uses: actions/setup-node@v4
         with:
@@ -49,7 +55,7 @@ jobs:
           AMO_TOKEN: ${{ secrets.AMO_TOKEN }}
         run: cd scripts && node interns-sync.js
 
-      - name: Commit and push if changed
+      - name: Commit and push
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
@@ -58,13 +64,6 @@ jobs:
             echo "No changes to commit"
           else
             git commit -m "sync: update dashboard data $(date -u +%Y-%m-%dT%H:%M:%SZ)"
-            # Retry push with rebase on conflict (handles concurrent workflow runs)
-            for i in 1 2 3; do
-              if git push; then
-                break
-              fi
-              echo "Push failed, pulling and retrying (attempt $i)..."
-              git pull --rebase origin master
-              sleep 2
-            done
+            git pull --rebase origin master || true
+            git push origin master
           fi
