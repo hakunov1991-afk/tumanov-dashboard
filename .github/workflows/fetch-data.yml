@@ -49,5 +49,11 @@ jobs:
           git add docs/data/
           git diff --cached --quiet && echo "No changes" && exit 0
           git commit -m "sync: $(date -u +%Y-%m-%dT%H:%M:%SZ)"
-          git pull --rebase origin master || true
-          git push origin master
+          # Retry push up to 3 times with fresh pull
+          for i in 1 2 3; do
+            git pull --rebase origin master --autostash && git push origin master && exit 0
+            echo "Retry $i..."
+            sleep 5
+          done
+          echo "All retries failed, force pushing..."
+          git push origin master --force

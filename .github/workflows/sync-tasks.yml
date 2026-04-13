@@ -27,5 +27,10 @@ jobs:
           git add docs/data/
           git diff --cached --quiet && exit 0
           git commit -m "sync tasks: $(date -u +%H:%M)"
-          git pull --rebase origin master || true
-          git push origin master
+          for i in 1 2 3; do
+            git pull --rebase origin master --autostash && git push origin master && exit 0
+            echo "Retry $i..."
+            sleep 5
+          done
+          echo "Force push..."
+          git push origin master --force
