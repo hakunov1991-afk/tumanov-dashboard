@@ -23,21 +23,9 @@
   });
 
   // Refresh button
+  // Обновить = перезагрузить страницу (данные обновляются через GitHub Actions)
   btnRefresh.addEventListener('click', function() {
-    var route = getRoute();
-    btnRefresh.textContent = 'Загрузка...';
-    btnRefresh.disabled = true;
-    DataLoader.refreshFromGAS(route)
-      .then(function(data) {
-        renderRoute(route, data);
-      })
-      .catch(function(err) {
-        alert('Ошибка загрузки: ' + err.message);
-      })
-      .finally(function() {
-        btnRefresh.textContent = 'Обновить данные';
-        btnRefresh.disabled = false;
-      });
+    location.reload(true);
   });
 
   function getRoute() {
