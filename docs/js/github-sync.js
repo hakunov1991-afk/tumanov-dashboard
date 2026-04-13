@@ -86,16 +86,8 @@ var GitHubSync = (function() {
           statusEl.textContent = '\u2713 Запущено! Обновится через 5-10 мин';
           statusEl.style.color = '#00B67A';
         }
-        // Разблокировка через 10 минут (workflow закончится)
-        setTimeout(function() {
-          delete runningWorkflows[workflowFile];
-          if (statusEl) {
-            statusEl.textContent = 'Обновить таблицу';
-            statusEl.style.opacity = '1';
-            statusEl.style.pointerEvents = '';
-            statusEl.disabled = false;
-          }
-        }, 600000);
+        // Опрос статуса workflow каждые 30 сек
+        pollWorkflowStatus(token, workflowFile, statusEl);
       } else if (resp.status === 401 || resp.status === 403) {
         localStorage.removeItem(TOKEN_KEY);
         delete runningWorkflows[workflowFile];
@@ -124,6 +116,65 @@ var GitHubSync = (function() {
         statusEl.style.pointerEvents = '';
       }
     });
+  }
+
+  function pollWorkflowStatus(token, workflowFile, statusEl) {
+    var attempts = 0;
+    var maxAttempts = 40; // 40 × 30сек = 20 мин максимум
+
+    function check() {
+      attempts++;
+      var elapsed = attempts * 30;
+      var mins = Math.floor(elapsed / 60);
+      var secs = elapsed % 60;
+
+      if (statusEl) {
+        statusEl.textContent = '\u23F3 Обновляется... ' + mins + ':' + String(secs).padStart(2, '0');
+        statusEl.style.color = '#0088CC';
+      }
+
+      fetch('https://api.github.com/repos/' + REPO + '/actions/runs?per_page=5&status=in_progress', {
+        headers: { 'Authorization': 'token ' + token, 'Accept': 'application/vnd.github.v3+json' }
+      })
+      .then(function(r) { return r.json(); })
+      .then(function(data) {
+        var running = (data.workflow_runs || []).some(function(run) {
+          return run.path && run.path.indexOf(workflowFile) >= 0;
+        });
+
+        if (!running && attempts > 2) {
+          // Workflow завершился
+          delete runningWorkflows[workflowFile];
+          if (statusEl) {
+            statusEl.textContent = '\u2713 Готово! Обновите страницу (F5)';
+            statusEl.style.color = '#00B67A';
+            statusEl.style.opacity = '1';
+            statusEl.style.pointerEvents = '';
+            statusEl.disabled = false;
+          }
+          return;
+        }
+
+        if (attempts >= maxAttempts) {
+          delete runningWorkflows[workflowFile];
+          if (statusEl) {
+            statusEl.textContent = '\u26A0 Таймаут. Проверьте Actions на GitHub';
+            statusEl.style.color = '#C9A96E';
+            statusEl.style.opacity = '1';
+            statusEl.style.pointerEvents = '';
+          }
+          return;
+        }
+
+        setTimeout(check, 30000);
+      })
+      .catch(function() {
+        if (attempts < maxAttempts) setTimeout(check, 30000);
+      });
+    }
+
+    // Первая проверка через 30 сек (дать время workflow стартовать)
+    setTimeout(check, 30000);
   }
 
   function dispatchAll(statusEl) {
