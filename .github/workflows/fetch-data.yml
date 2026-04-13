@@ -6,34 +6,43 @@ on:
   workflow_dispatch: {}
 
 concurrency:
-  group: sync-all
+  group: sync-amo
   cancel-in-progress: true
 
 permissions:
   contents: write
 
 jobs:
-  tasks:
-    uses: ./.github/workflows/sync-tasks.yml
-    secrets: inherit
-  rating:
-    uses: ./.github/workflows/sync-rating.yml
-    secrets: inherit
-  cohort:
-    uses: ./.github/workflows/sync-cohort.yml
-    secrets: inherit
-  stats:
-    uses: ./.github/workflows/sync-stats.yml
-    secrets: inherit
-
-  commit:
-    needs: [tasks, rating, cohort, stats]
+  sync:
     runs-on: ubuntu-latest
+    timeout-minutes: 45
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/download-artifact@v4
-        with: { path: docs/data/, merge-multiple: true }
-      - name: Push
+      - uses: actions/setup-node@v4
+        with: { node-version: '22' }
+      - run: cd scripts && npm ci
+
+      - name: tasks-sync
+        env: { AMO_TOKEN: '${{ secrets.AMO_TOKEN }}' }
+        run: cd scripts && node tasks-sync.js
+
+      - name: rating-sync
+        env: { AMO_TOKEN: '${{ secrets.AMO_TOKEN }}' }
+        run: cd scripts && node rating-sync.js
+
+      - name: cohort-sync
+        env: { AMO_TOKEN: '${{ secrets.AMO_TOKEN }}' }
+        run: cd scripts && node cohort-sync.js
+
+      - name: stats-sync
+        env: { AMO_TOKEN: '${{ secrets.AMO_TOKEN }}' }
+        run: cd scripts && node stats-sync.js
+
+      - name: interns-sync
+        env: { AMO_TOKEN: '${{ secrets.AMO_TOKEN }}' }
+        run: cd scripts && node interns-sync.js
+
+      - name: Commit and push
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"

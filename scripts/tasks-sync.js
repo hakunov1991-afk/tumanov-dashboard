@@ -1081,53 +1081,86 @@ async function buildT10(managers, t10Data) {
 
 async function syncStakan(managers) {
   console.log('Стакан: Загрузка...');
-  const STAKAN_STAGE = 80681250; // Этап для стакана
+  const STAKAN_STAGE = 80681250;
   const nowTs = Math.floor(Date.now() / 1000);
-  const yearAgo = nowTs - 365 * 86400;
   const weekAgo = nowTs - 7 * 86400;
 
-  // Конфигурация кругов: staleDays определяет разделение Отстойник/Стакан
+  // Круги с исключениями (как в GAS):
+  // К2: поле К2 заполнено, К3 и К4 НЕТ
+  // К3: поле К3 заполнено, К4 НЕТ
+  // К4: поле К4 заполнено
   const circlesDef = [
-    { name: 'Круг 2', num: 2, fieldId: FIELDS.CIRCLE_K2, staleDays: 0, checkTasks: true },
-    { name: 'Круг 3', num: 3, fieldId: FIELDS.CIRCLE_K3, staleDays: 3, checkTasks: true },
-    { name: 'Круг 4', num: 4, fieldId: FIELDS.CIRCLE_K4, staleDays: 7, checkTasks: false },
+    { name: 'Круг 2', fieldId: FIELDS.CIRCLE_K2, excludeFields: [FIELDS.CIRCLE_K3, FIELDS.CIRCLE_K4], staleDays: 0, checkTasks: true },
+    { name: 'Круг 3', fieldId: FIELDS.CIRCLE_K3, excludeFields: [FIELDS.CIRCLE_K4], staleDays: 3, checkTasks: true },
+    { name: 'Круг 4', fieldId: FIELDS.CIRCLE_K4, excludeFields: [], staleDays: 7, checkTasks: false },
   ];
 
-  // Загружаем все лиды на этапе стакана
-  console.log('  Стакан: загрузка лидов на этапе...');
-  const stakanLeads = await amoFetchAll(
-    `${AMO.API_BASE}/leads?filter[statuses][0][pipeline_id]=${AMO.PIPE_ID}&filter[statuses][0][status_id]=${STAKAN_STAGE}`,
-    'leads', { maxPages: 20 }
-  );
-  console.log(`  Стакан: ${stakanLeads.length} лидов на этапе`);
+  // Загружаем ВСЕ лиды на этапе стакана С custom_fields
+  console.log('  Стакан: загрузка лидов на этапе 80681250...');
+  const { amoFetchLeadsByIds: fetchByIds } = await import('./lib/amo-client.js');
+  let allLeadIds = [];
+  // Сначала получаем ID лидов на этапе
+  let page = 1;
+  while (page <= 30) {
+    const url = `${AMO.API_BASE}/leads?filter[statuses][0][pipeline_id]=${AMO.PIPE_ID}&filter[statuses][0][status_id]=${STAKAN_STAGE}&page=${page}&limit=250`;
+    const data = await amoFetch(url);
+    const items = data?._embedded?.leads || [];
+    if (!items.length) break;
+    for (const l of items) allLeadIds.push(String(l.id));
+    if (items.length < 250) break;
+    page++;
+    await sleep(AMO.SLEEP_MS);
+  }
+  console.log(`  Стакан: ${allLeadIds.length} лидов на этапе`);
 
-  // Загружаем историю кругов
-  const k2Events = await loadFieldHistory(FIELDS.CIRCLE_K2, yearAgo, nowTs);
-  const k3Events = await loadFieldHistory(FIELDS.CIRCLE_K3, yearAgo, nowTs);
-  const k4Events = await loadFieldHistory(FIELDS.CIRCLE_K4, yearAgo, nowTs);
-  const fieldEvents = { [FIELDS.CIRCLE_K2]: k2Events, [FIELDS.CIRCLE_K3]: k3Events, [FIELDS.CIRCLE_K4]: k4Events };
+  // Загружаем полные данные лидов с custom_fields
+  const fullLeads = await fetchByIds(allLeadIds);
+  console.log(`  Стакан: загружено ${fullLeads.length} лидов с полями`);
 
-  // Загружаем даты входа на этап (для разделения Отстойник/Стакан)
-  const leadIds = stakanLeads.map(l => String(l.id));
+  // Хелпер: проверяет есть ли значение у кастомного поля лида
+  function hasField(lead, fieldId) {
+    if (!lead.custom_fields_values) return false;
+    for (const cf of lead.custom_fields_values) {
+      if (cf.field_id === fieldId && cf.values && cf.values.length > 0) {
+        const v = cf.values[0].value;
+        if (v && v !== '' && v !== '0' && v !== 'false') return true;
+      }
+    }
+    return false;
+  }
+
+  // Загружаем даты входа на этап
   const entryTransitions = await amoFetchTransitions(STAKAN_STAGE, weekAgo, nowTs);
   const entryDates = {};
   for (const t of entryTransitions) {
-    if (!entryDates[t.leadId] || t.ts > entryDates[t.leadId]) {
-      entryDates[t.leadId] = t.ts;
+    if (!entryDates[t.leadId] || t.ts > entryDates[t.leadId]) entryDates[t.leadId] = t.ts;
+  }
+
+  // Классифицируем лидов по кругам С ИСКЛЮЧЕНИЯМИ
+  const circleLeads = [];
+  for (const cDef of circlesDef) {
+    const leads = [];
+    for (const lead of fullLeads) {
+      if (!hasField(lead, cDef.fieldId)) continue;
+      // Проверяем исключения
+      let excluded = false;
+      for (const exclId of cDef.excludeFields) {
+        if (hasField(lead, exclId)) { excluded = true; break; }
+      }
+      if (excluded) continue;
+      leads.push(lead);
+    }
+    circleLeads.push({ def: cDef, leads });
+  }
+
+  // Загружаем задачи для К2 и К3
+  const taskLeadIds = [];
+  for (const cl of circleLeads) {
+    if (cl.def.checkTasks) {
+      for (const l of cl.leads) taskLeadIds.push(String(l.id));
     }
   }
 
-  // Классифицируем лидов по кругам (исключая те что в старших кругах)
-  const circleLeads = { 2: [], 3: [], 4: [] };
-  for (const lead of stakanLeads) {
-    const lid = String(lead.id);
-    if (wasFieldSetBefore(fieldEvents[FIELDS.CIRCLE_K4], lid, nowTs)) circleLeads[4].push(lid);
-    else if (wasFieldSetBefore(fieldEvents[FIELDS.CIRCLE_K3], lid, nowTs)) circleLeads[3].push(lid);
-    else if (wasFieldSetBefore(fieldEvents[FIELDS.CIRCLE_K2], lid, nowTs)) circleLeads[2].push(lid);
-  }
-
-  // Загружаем задачи для K2 и K3 лидов
-  const taskLeadIds = [...circleLeads[2], ...circleLeads[3]];
   const leadTasksMap = {};
   if (taskLeadIds.length > 0) {
     console.log(`  Стакан: загрузка задач для ${taskLeadIds.length} лидов...`);
@@ -1147,44 +1180,36 @@ async function syncStakan(managers) {
     }
   }
 
-  // Формируем строки таблицы
+  // Формируем таблицу
   const headers = ['Круг', 'Отстойник', 'Стакан', 'Всего', 'Задачи в работе', 'Задачи просрочены', 'Без задач'];
   const rows = [];
 
-  for (const cDef of circlesDef) {
-    const leads = circleLeads[cDef.num];
+  for (const cl of circleLeads) {
+    const cDef = cl.def;
+    const lids = cl.leads.map(l => String(l.id));
     let otstoynik = [], stakan = [];
 
     if (cDef.staleDays === 0) {
-      // K2: всё в стакан
-      stakan = leads;
+      stakan = lids;
     } else {
       const cutoffTs = nowTs - cDef.staleDays * 86400;
-      for (const lid of leads) {
+      for (const lid of lids) {
         const entryTs = entryDates[lid];
-        if (entryTs && entryTs > cutoffTs) {
-          otstoynik.push(lid); // Свежие → отстойник
-        } else {
-          stakan.push(lid); // Старые → стакан
-        }
+        if (entryTs && entryTs > cutoffTs) otstoynik.push(lid);
+        else stakan.push(lid);
       }
     }
 
     const total = otstoynik.length + stakan.length;
-
-    // Задачи (только для K2 и K3)
     let inWork = [], overdue = [], noTask = [];
+
     if (cDef.checkTasks) {
-      for (const lid of leads) {
+      for (const lid of lids) {
         const tasks = leadTasksMap[lid] || [];
-        const activeTasks = tasks.filter(t => !t.is_completed);
-        if (activeTasks.length === 0) {
-          noTask.push(lid);
-        } else {
-          const hasOverdue = activeTasks.some(t => t.complete_till && t.complete_till < nowTs);
-          if (hasOverdue) overdue.push(lid);
-          else inWork.push(lid);
-        }
+        const active = tasks.filter(t => !t.is_completed);
+        if (active.length === 0) noTask.push(lid);
+        else if (active.some(t => t.complete_till && t.complete_till < nowTs)) overdue.push(lid);
+        else inWork.push(lid);
       }
     }
 
@@ -1192,14 +1217,16 @@ async function syncStakan(managers) {
       cDef.name,
       cell(otstoynik.length, otstoynik),
       cell(stakan.length, stakan),
-      cell(total, leads),
+      cell(total, lids),
       cell(inWork.length, inWork),
       cell(overdue.length, overdue),
       cell(noTask.length, noTask),
     ]);
+
+    console.log(`  ${cDef.name}: Отстойник=${otstoynik.length}, Стакан=${stakan.length}, Всего=${total}`);
   }
 
-  console.log(`Стакан: OK (К2: ${circleLeads[2].length}, К3: ${circleLeads[3].length}, К4: ${circleLeads[4].length})`);
+  console.log('Стакан: OK');
   return { id: 'stakan', title: 'Стакан 2/3/4 круг', headers: [headers], rows };
 }
 
