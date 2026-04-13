@@ -8,7 +8,7 @@ export const AMO = {
   TOKEN: process.env.AMO_TOKEN || '', // Set via environment variable or GitHub Secret
   PIPE_ID: 9696654,
   PER_PAGE: 250,
-  SLEEP_MS: 150,
+  SLEEP_MS: 100,
   MAX_RETRIES: 6,
 };
 

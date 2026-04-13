@@ -2,10 +2,9 @@ name: Sync AMO Data
 
 on:
   schedule:
-    - cron: '7 19 * * *'    # 02:07 Phuket — один запуск в день
-  workflow_dispatch: {}      # Manual trigger
+    - cron: '7 19 * * *'    # 02:07 Phuket
+  workflow_dispatch: {}
 
-# Не запускать параллельно — если предыдущий ещё работает, отменить его
 concurrency:
   group: sync-amo
   cancel-in-progress: true
@@ -14,46 +13,83 @@ permissions:
   contents: write
 
 jobs:
-  sync:
+  # Параллельные jobs — каждый скрипт отдельно
+  tasks:
     runs-on: ubuntu-latest
-    timeout-minutes: 45
-
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-
       - uses: actions/setup-node@v4
-        with:
-          node-version: '22'
-
-      - name: Install dependencies
-        run: cd scripts && npm ci
-
+        with: { node-version: '22' }
+      - run: cd scripts && npm ci
       - name: Run tasks-sync
-        env:
-          AMO_TOKEN: ${{ secrets.AMO_TOKEN }}
+        env: { AMO_TOKEN: '${{ secrets.AMO_TOKEN }}' }
         run: cd scripts && node tasks-sync.js
+      - uses: actions/upload-artifact@v4
+        with:
+          name: tasks-data
+          path: docs/data/
 
+  rating:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: '22' }
+      - run: cd scripts && npm ci
       - name: Run rating-sync
-        env:
-          AMO_TOKEN: ${{ secrets.AMO_TOKEN }}
+        env: { AMO_TOKEN: '${{ secrets.AMO_TOKEN }}' }
         run: cd scripts && node rating-sync.js
+      - uses: actions/upload-artifact@v4
+        with:
+          name: rating-data
+          path: docs/data/
 
-      - name: Run cohort-sync
-        env:
-          AMO_TOKEN: ${{ secrets.AMO_TOKEN }}
-        run: cd scripts && node cohort-sync.js
+  cohort:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: '22' }
+      - run: cd scripts && npm ci
+      - name: Run cohort + stats + interns
+        env: { AMO_TOKEN: '${{ secrets.AMO_TOKEN }}' }
+        run: |
+          cd scripts
+          node cohort-sync.js
+          node stats-sync.js
+          node interns-sync.js
+      - uses: actions/upload-artifact@v4
+        with:
+          name: cohort-data
+          path: docs/data/
 
-      - name: Run stats-sync
-        env:
-          AMO_TOKEN: ${{ secrets.AMO_TOKEN }}
-        run: cd scripts && node stats-sync.js
+  # Merge и push — после всех параллельных jobs
+  commit:
+    needs: [tasks, rating, cohort]
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
 
-      - name: Run interns-sync
-        env:
-          AMO_TOKEN: ${{ secrets.AMO_TOKEN }}
-        run: cd scripts && node interns-sync.js
+      - uses: actions/download-artifact@v4
+        with:
+          name: tasks-data
+          path: docs/data/
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: rating-data
+          path: docs/data/
+          merge-multiple: true
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: cohort-data
+          path: docs/data/
+          merge-multiple: true
 
       - name: Commit and push
         run: |
@@ -61,9 +97,9 @@ jobs:
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add docs/data/
           if git diff --cached --quiet; then
-            echo "No changes to commit"
+            echo "No changes"
           else
-            git commit -m "sync: update dashboard data $(date -u +%Y-%m-%dT%H:%M:%SZ)"
+            git commit -m "sync: update $(date -u +%Y-%m-%dT%H:%M:%SZ)"
             git pull --rebase origin master || true
             git push origin master
           fi
