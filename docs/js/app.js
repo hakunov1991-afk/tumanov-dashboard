@@ -97,13 +97,17 @@
       ]).then(function(results) {
         var tasksData = results[0];
         var btData = results[1];
-        // Объединяем таблицы
         if (tasksData && tasksData.tables && btData && btData.tables) {
           tasksData.tables = tasksData.tables.concat(btData.tables);
         }
         loading.classList.add('hidden');
         view.classList.remove('hidden');
-        renderRoute(route, tasksData);
+        renderRoute(route, tasksData || btData);
+      }).catch(function(err) {
+        console.error('Tasks load error:', err);
+        loading.classList.add('hidden');
+        view.classList.remove('hidden');
+        view.innerHTML = '<p style="padding:20px;color:#E53935">Ошибка загрузки данных: ' + err.message + '</p>';
       });
       return;
     }
@@ -112,6 +116,11 @@
       loading.classList.add('hidden');
       view.classList.remove('hidden');
       renderRoute(route, data);
+    }).catch(function(err) {
+      console.error('Load error:', err);
+      loading.classList.add('hidden');
+      view.classList.remove('hidden');
+      view.innerHTML = '<p style="padding:20px;color:#E53935">Ошибка загрузки: ' + err.message + '</p>';
     });
   }
 

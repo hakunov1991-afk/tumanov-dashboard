@@ -8,15 +8,8 @@ var ConfigLoader = (function() {
   function load() {
     if (config) return Promise.resolve(config);
 
-    // Check localStorage override first (from config editor)
-    try {
-      var local = localStorage.getItem(LOCAL_KEY);
-      if (local) {
-        config = JSON.parse(local);
-        console.log('Config loaded from localStorage override');
-        return Promise.resolve(config);
-      }
-    } catch (e) { /* ignore */ }
+    // localStorage override отключён (редактор убран)
+    try { localStorage.removeItem(LOCAL_KEY); } catch(e) {}
 
     return fetch('data/dashboard-config.json')
       .then(function(r) { return r.json(); })
