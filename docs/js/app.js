@@ -64,6 +64,7 @@
 
   function navigate() {
     var route = getRoute();
+    console.log('APP: navigate to', route);
     updateActiveNav(route);
     loading.classList.remove('hidden');
     view.classList.add('hidden');
@@ -101,7 +102,9 @@
   }
 
   // Старт
+  console.log('APP: init start');
   ConfigLoader.load().then(function() {
+    console.log('APP: config loaded, navigating to', getRoute());
     DataLoader.loadMeta().then(function(meta) {
       if (meta && meta._meta && meta._meta.snapshotDate) {
         updatedAt.textContent = 'Обновлено: ' + new Date(meta._meta.snapshotDate).toLocaleString('ru-RU');
@@ -114,6 +117,7 @@
   }).catch(function(err) {
     loading.classList.add('hidden');
     view.classList.remove('hidden');
+    console.error('APP: init error', err);
     view.innerHTML = '<p style="padding:20px;color:#E53935">Ошибка инициализации: ' + err.message + '</p>';
   });
 
