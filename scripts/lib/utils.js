@@ -111,11 +111,14 @@ export function cellWithLang(value, ruIds, enIds) {
 }
 
 /**
- * Сохраняет JSON файл
+ * Сохраняет JSON файл атомарно (через tmp + rename)
+ * Файл никогда не будет пустым — либо старый, либо новый
  */
 export async function saveJson(filePath, data) {
-  const { writeFile } = await import('fs/promises');
+  const { writeFile, rename } = await import('fs/promises');
   const json = JSON.stringify(data, null, 2);
-  await writeFile(filePath, json, 'utf-8');
+  const tmpPath = filePath + '.tmp';
+  await writeFile(tmpPath, json, 'utf-8');
+  await rename(tmpPath, filePath);
   console.log(`Saved: ${filePath} (${json.length} bytes)`);
 }
