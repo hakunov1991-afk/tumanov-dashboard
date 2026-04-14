@@ -91,23 +91,18 @@
 
     // Задачи = Задачи + Задачи брокеров (объединённая страница)
     if (route === 'tasks') {
-      Promise.all([
-        DataLoader.loadSheet('tasks'),
-        DataLoader.loadSheet('broker-tasks')
-      ]).then(function(results) {
+      var p1 = DataLoader.loadSheet('tasks').catch(function() { return null; });
+      var p2 = DataLoader.loadSheet('broker-tasks').catch(function() { return null; });
+      Promise.all([p1, p2]).then(function(results) {
         var tasksData = results[0];
         var btData = results[1];
+        // Объединяем если оба в новом формате
         if (tasksData && tasksData.tables && btData && btData.tables) {
           tasksData.tables = tasksData.tables.concat(btData.tables);
         }
         loading.classList.add('hidden');
         view.classList.remove('hidden');
         renderRoute(route, tasksData || btData);
-      }).catch(function(err) {
-        console.error('Tasks load error:', err);
-        loading.classList.add('hidden');
-        view.classList.remove('hidden');
-        view.innerHTML = '<p style="padding:20px;color:#E53935">Ошибка загрузки данных: ' + err.message + '</p>';
       });
       return;
     }
@@ -134,13 +129,7 @@
       }
     }).catch(function() {});
 
-    // Также проверяем timestamp из нового формата данных
-    DataLoader.loadSheet('tasks').then(function(data) {
-      if (data && data._meta && data._meta.updated) {
-        var d = new Date(data._meta.updated);
-        updatedAt.textContent = 'Обновлено: ' + d.toLocaleString('ru-RU');
-      }
-    }).catch(function() {});
+    // Timestamp обновится при загрузке страницы
 
     // Route handling
     window.addEventListener('hashchange', navigate);
