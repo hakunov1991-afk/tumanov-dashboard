@@ -111,9 +111,13 @@
       }
     }).catch(function() {});
 
-    window.addEventListener('hashchange', navigate);
-    if (!location.hash) location.hash = '#/tasks';
-    navigate();
+    window.addEventListener('hashchange', function() {
+      console.log('APP: hashchange to', getRoute());
+      navigate();
+    });
+    if (!location.hash || location.hash === '#/') location.hash = '#/tasks';
+    // Одна начальная навигация
+    setTimeout(navigate, 50);
   }).catch(function(err) {
     loading.classList.add('hidden');
     view.classList.remove('hidden');

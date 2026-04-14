@@ -61,7 +61,7 @@ var DataLoader = (function() {
   }
 
   function loadSheet(routeKey) {
-    // Без кеша — всегда свежие данные
+    if (cache[routeKey]) return Promise.resolve(cache[routeKey]);
     var resolved = _resolveSheet(routeKey);
     if (!resolved.fileName) return Promise.resolve(null);
     return fetch('data/sheets/' + resolved.fileName + '.json?t=' + Date.now())
