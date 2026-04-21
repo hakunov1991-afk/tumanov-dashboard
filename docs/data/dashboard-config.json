@@ -129,7 +129,7 @@
     }
   },
   "genericPages": {
-    "rating-brokers": { "title": "Рейтинг брокеров", "sheet": "Рейтинг брокеров", "file": "rating-brokerov" },
+    "rating-brokers": { "title": "Валовая маржа брокеров", "sheet": "Валовая маржа брокеров", "file": "valovaya-marzha-brokerov" },
     "rating-interim": { "title": "Рейтинг промежуточный", "sheet": "Рейтинг промежуточный", "file": "rating-promezhutochny" },
     "statistics": { "title": "Статистика", "sheet": "Статистика", "file": "statistika" },
     "cohort": { "title": "Когортный анализ", "sheet": "Когортный анализ", "file": "kogortny-analiz" },

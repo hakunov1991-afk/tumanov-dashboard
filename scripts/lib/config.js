@@ -75,7 +75,7 @@ export const FIELDS = {
 };
 
 export const CIRCLES = {
-  COSTS: { 1: 100, 2: 25, 3: 5, 4: 1 },
+  COSTS: { 1: 100, 2: 30, 3: 10, 4: 0 },
 };
 
 export const TELEGRAM = {
@@ -104,7 +104,13 @@ export const SALES_SHEET = {
   COL_DATE: 'B',
   COL_BROKER: 'C',
   COL_REVENUE: 'R',
-  COL_MARGIN: 87,  // column index
+  COL_MARGIN: 87,      // CI — валовая маржа основного брокера
+  COL_AMO_LINK: 35,    // AI — ссылка на сделку в AMO
+  COL_BROKER2: 117,    // DM — имя второго брокера
+  COL_MARGIN2: 119,    // DO — маржа второго брокера
+  // Читаем с 1-й строки, фильтруем невалидные даты (serial > 40000)
+  DATA_START_ROW: 2,
+  MIN_DATE_SERIAL: 40000,  // серийный номер дат < 40000 считаем невалидными
 };
 
 // Phuket timezone offset

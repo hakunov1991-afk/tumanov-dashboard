@@ -190,6 +190,71 @@ export async function amoFetchResponsibleEvents(fromTs, toTs) {
 }
 
 /**
+ * Загрузка истории событий изменения кастомного поля.
+ * Возвращает { leadId: [{ts, set:bool}, ...] } (сортировано по ts ASC).
+ * Аналог _loadCircleFieldHistory_ из GAS.
+ */
+export async function amoFetchCustomFieldHistory(fieldId, fromTs, toTs) {
+  const history = {};
+  let page = 1;
+  let hasMore = true;
+  const limit = 100;
+
+  while (hasMore) {
+    const url = `${AMO.API_BASE}/events?` + [
+      `filter[type]=custom_field_${fieldId}_value_changed`,
+      `filter[created_at][from]=${fromTs}`,
+      `filter[created_at][to]=${toTs}`,
+      `page=${page}`,
+      `limit=${limit}`,
+    ].join('&');
+
+    const data = await amoFetch(url);
+    if (!data?._embedded?.events) break;
+    const events = data._embedded.events;
+    for (const e of events) {
+      const leadId = String(e.entity_id);
+      if (!history[leadId]) history[leadId] = [];
+      let isSet = false;
+      if (e.value_after && e.value_after[0]) {
+        const val = e.value_after[0].custom_field_value;
+        if (val && val.text) {
+          const t = String(val.text).toLowerCase();
+          isSet = (t === '1' || t === 'true' || t === 'да');
+        } else if (val && val.enum_id) {
+          isSet = true;
+        }
+      }
+      history[leadId].push({ ts: e.created_at, set: isSet });
+    }
+    hasMore = events.length === limit;
+    page++;
+    await sleep(AMO.SLEEP_MS);
+  }
+
+  // Сортируем события по ts
+  for (const lid of Object.keys(history)) {
+    history[lid].sort((a, b) => a.ts - b.ts);
+  }
+  return history;
+}
+
+/**
+ * Был ли установлен кастомный (bool-like) field у лида до beforeTs.
+ * Аналог _wasCircleFieldSetBefore_ из GAS.
+ */
+export function wasCustomFieldSetBefore(history, leadId, beforeTs) {
+  const events = history[leadId];
+  if (!events || events.length === 0) return false;
+  let lastState = false;
+  for (const ev of events) {
+    if (ev.ts < beforeTs) lastState = ev.set;
+    else break;
+  }
+  return lastState;
+}
+
+/**
  * Загрузка текущего responsible_user_id для списка лидов
  */
 export async function amoFetchLeadResponsibles(leadIds) {
