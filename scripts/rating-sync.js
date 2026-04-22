@@ -500,6 +500,17 @@ async function main() {
   // 2. Rating DB (taken, mql, circles)
   const db = await updateRatingDb(managers);
 
+  // 2b. Дописываем маржу в каждый месяц/менеджер для клиента (rating-period.js)
+  for (const mk of Object.keys(db.months)) {
+    const mgrs = db.months[mk].managers || {};
+    for (const mId of Object.keys(mgrs)) {
+      const m = marginByManagerMonth[mId] && marginByManagerMonth[mId][mk];
+      mgrs[mId].margin = m ? m.margin : 0;
+      mgrs[mId].marginLeadIds = m ? m.leadIds : [];
+    }
+  }
+  await saveJson(join(RAW_DIR, 'rating-db.json'), db);
+
   // 3. Определяем периоды
   const allKeys = Object.keys(db.months).sort();
   const fullMonthKeys = allKeys.filter(k => db.months[k].isFinal);
