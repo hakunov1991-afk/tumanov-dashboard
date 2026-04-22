@@ -31,19 +31,25 @@ var RatingPeriod = (function() {
         return;
       }
 
+      // По умолчанию — последние 3 ПОЛНЫХ месяца (исключаем текущий)
+      var fullKeys = allKeys.filter(function(k) { return data.months[k] && data.months[k].isFinal; });
+      var defaultTo = fullKeys.length > 0 ? fullKeys[fullKeys.length - 1] : allKeys[allKeys.length - 1];
+      var defaultFrom = fullKeys.length >= 3
+        ? fullKeys[fullKeys.length - 3]
+        : (fullKeys[0] || allKeys[0]);
+
       var html = '<div class="card"><div class="card-header" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px">';
       html += '<span>\uD83C\uDFC6 Рейтинг за период</span>';
       html += '<div style="display:flex;align-items:center;gap:8px;font-size:12px;font-weight:400;text-transform:none">';
       html += '<label>От: <select id="rating-from" style="padding:3px 6px;border-radius:4px;border:1px solid #ccc;font-size:12px">';
       for (var i = 0; i < allKeys.length; i++) {
-        var sel = (defaultMonths && defaultMonths.indexOf(allKeys[i]) === 0) ? ' selected' : '';
-        if (!defaultMonths && i === Math.max(0, allKeys.length - 3)) sel = ' selected';
+        var sel = (allKeys[i] === defaultFrom) ? ' selected' : '';
         html += '<option value="' + allKeys[i] + '"' + sel + '>' + formatMonthKey(allKeys[i]) + '</option>';
       }
       html += '</select></label>';
       html += '<label>До: <select id="rating-to" style="padding:3px 6px;border-radius:4px;border:1px solid #ccc;font-size:12px">';
       for (var j = 0; j < allKeys.length; j++) {
-        var sel2 = (j === allKeys.length - 1) ? ' selected' : '';
+        var sel2 = (allKeys[j] === defaultTo) ? ' selected' : '';
         html += '<option value="' + allKeys[j] + '"' + sel2 + '>' + formatMonthKey(allKeys[j]) + '</option>';
       }
       html += '</select></label>';
