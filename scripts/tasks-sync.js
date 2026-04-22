@@ -141,7 +141,7 @@ async function syncT1(managers) {
   console.log(`T1: OK, ${rows.length} менеджеров, ${grandTotal} просрочек`);
 
   return {
-    table: { id: 't1', title: 'T1: Просроченные задачи', headers: [headers], rows, totals: totalRow },
+    table: { id: 't1', title: 'T1: Просроченные задачи (по брокерам и этапам)', headers: [headers], rows, totals: totalRow },
     t10Data,
   };
 }
@@ -194,7 +194,7 @@ async function syncT2(managers) {
   totalRow.push(cell(grandTotal, []));
 
   console.log(`T2: OK, ${grandTotal} лидов`);
-  return { id: 't2', title: 'T2: Активные карточки сделок (загрузка брокера)', headers: [headers], rows, totals: totalRow };
+  return { id: 't2', title: 'T2: Активные карточки сделок (загрузка брокера по этапам)', headers: [headers], rows, totals: totalRow };
 }
 
 // ==================== T3: ПРОСРОЧКА >30 ДНЕЙ ====================
@@ -249,7 +249,7 @@ async function syncT3(managers) {
   totalRow.push(cell(grandTotal, []));
 
   console.log(`T3: OK, ${grandTotal} просрочек`);
-  return { id: 't3', title: 'T3: Просрочки >30 дней', headers: [headers], rows, totals: totalRow };
+  return { id: 't3', title: 'T3: Просрочки более 30 дней на этапе', headers: [headers], rows, totals: totalRow };
 }
 
 // ==================== T4: СДЕЛКИ ЗА ВЧЕРА ====================
@@ -258,7 +258,7 @@ async function syncT4(managers) {
   console.log('T4: Сделки за вчера...');
   const yesterdayStart = yesterdayStartPhuket();
   const yesterdayEnd = yesterdayStart + 86400;
-  return syncDealsForPeriod('t4', 'T4: Взято вчера', managers, yesterdayStart, yesterdayEnd);
+  return syncDealsForPeriod('t4', 'T4: Взято в работу вчера', managers, yesterdayStart, yesterdayEnd);
 }
 
 // ==================== T5: СДЕЛКИ С НАЧАЛА МЕСЯЦА ====================
@@ -267,7 +267,7 @@ async function syncT5(managers) {
   console.log('T5: Сделки с начала месяца...');
   const monthStart = monthStartPhuket();
   const nowTs = Math.floor(Date.now() / 1000);
-  return syncDealsForPeriod('t5', 'T5: Взято за месяц', managers, monthStart, nowTs);
+  return syncDealsForPeriod('t5', 'T5: Взято в работу с начала месяца', managers, monthStart, nowTs);
 }
 
 // Общая функция для T4/T5
@@ -575,7 +575,7 @@ async function syncT7(managers) {
   totalRow.push(grandCount > 0 ? Math.round(grandSum / grandCount) : '');
 
   console.log(`T7: OK`);
-  return { id: 't7', title: 'T7: Средняя скорость перехода (часы)', headers: [headers], rows, totals: totalRow };
+  return { id: 't7', title: 'T6: Средняя скорость переходов между этапами (часы)', headers: [headers], rows, totals: totalRow };
 }
 
 // ==================== T11: ПРЕВЫШЕНИЕ ЛИМИТОВ ====================
@@ -641,7 +641,7 @@ async function syncT11(managers) {
   totalRow.push(cell(grandTotal, []));
 
   console.log(`T11: OK, ${grandTotal} превышений`);
-  return { id: 't11', title: 'T11: Превышение лимитов удержания', headers: [headers], rows, totals: totalRow };
+  return { id: 't11', title: 'T7: Превышение лимитов удержания сделок на этапе', headers: [headers], rows, totals: totalRow };
 }
 
 // ==================== КРУГИ ====================
@@ -694,7 +694,7 @@ async function syncCircles() {
 
   const rows = [circleRows[1], circleRows[2], circleRows[3], circleRows[4]];
   console.log('Круги: OK');
-  return { id: 'circles', title: 'Круги (Взято в работу)', headers: [headers], rows };
+  return { id: 'circles', title: 'T8: Круги (Взято в работу — К1/К2/К3/К4)', headers: [headers], rows };
 }
 
 // ==================== РАСПИСАНИЕ ЗАДАЧ ====================
@@ -741,7 +741,7 @@ async function syncTaskSchedule(managers) {
   }
 
   console.log('Расписание задач: OK');
-  return { id: 'schedule', title: 'Расписание задач', headers: [headers], rows };
+  return { id: 'schedule', title: 'T9: Расписание задач (по этапам)', headers: [headers], rows };
 }
 
 // ==================== BT: КОНТРОЛЬ ПОСТАНОВКИ ЗАДАЧ БОТОМ ====================
@@ -818,7 +818,7 @@ async function syncBT(managers) {
 
   const totalRow = ['ИТОГО', ...dayTotals.map(v => v), grandTotal];
   console.log(`BT: OK, ${grandTotal} задач`);
-  return { id: 'bt', title: 'Контроль постановки задач ботом', headers: [headers], rows, totals: totalRow };
+  return { id: 'bt', title: 'T10: Контроль постановки задач ботом', headers: [headers], rows, totals: totalRow };
 }
 
 // ==================== T8: СКОРОСТЬ ВЗЯТИЯ В РАБОТУ ====================
@@ -907,7 +907,7 @@ async function syncT8(managers) {
   }
 
   console.log('T8: OK');
-  return { id: 't8', title: 'T8: Скорость взятия в работу (секунды)', headers: [headers], rows };
+  return { id: 't8', title: 'T11: Скорость взятия лида в работу (секунды)', headers: [headers], rows };
 }
 
 // ==================== T9: СНЯТЫЕ СДЕЛКИ ====================
@@ -1001,7 +1001,7 @@ async function syncT9(managers) {
   }
 
   console.log('T9: OK');
-  return { id: 't9', title: 'T9: Снятые сделки', headers: [headers], rows };
+  return { id: 't9', title: 'T12: Снятые сделки (по дням)', headers: [headers], rows };
 }
 
 // ==================== T10: ПРОСРОЧКИ ПО ДНЯМ ====================
@@ -1074,7 +1074,7 @@ async function buildT10(managers, t10Data) {
   totalRow.push(grandTotal > 0 ? grandTotal : '');
 
   console.log(`T10: OK, день ${todayDay}: ${t10Data[Object.keys(t10Data)[0]]?.total || 0} просрочек, всего дней в истории: ${Object.keys(history.days).length}`);
-  return { id: 't10', title: 'T10: Количество просрочек по дням', headers: [headers], rows, totals: totalRow };
+  return { id: 't10', title: 'T13: Количество просрочек по дням', headers: [headers], rows, totals: totalRow };
 }
 
 // ==================== СТАКАН ====================
