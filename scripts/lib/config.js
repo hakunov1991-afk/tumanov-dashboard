@@ -75,7 +75,7 @@ export const FIELDS = {
 };
 
 export const CIRCLES = {
-  COSTS: { 1: 100, 2: 30, 3: 10, 4: 0 },
+  COSTS: { 1: 100, 2: 10, 3: 10, 4: 0 },
 };
 
 export const TELEGRAM = {
