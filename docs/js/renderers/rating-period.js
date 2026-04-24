@@ -114,16 +114,15 @@ var RatingPeriod = (function() {
         if (d.mqlIds) allMqlIds = allMqlIds.concat(d.mqlIds);
         if (d.marginLeadIds) allMarginIds = allMarginIds.concat(d.marginLeadIds);
 
+        // Стоимость (mqlCost) посчитана на сервере с учётом cutoff 2026-04-24 по К2.
+        // На клиенте используем готовое значение, чтобы не дублировать логику.
+        if (typeof d.mqlCost === 'number') totalCost += d.mqlCost;
         if (d.byCircle) {
           for (var c = 1; c <= 4; c++) {
             var ids = d.byCircle[c] || [];
             circleCounts[c] += ids.length;
             costLeadIds = costLeadIds.concat(ids);
-            totalCost += ids.length * (CIRCLE_COSTS[c] || 0);
           }
-        } else if (d.mqlCost) {
-          // обратная совместимость со старой DB
-          totalCost += d.mqlCost;
         }
       }
 

@@ -75,7 +75,12 @@ export const FIELDS = {
 };
 
 export const CIRCLES = {
+  // Действующие стоимости (на момент takenTs)
   COSTS: { 1: 100, 2: 10, 3: 10, 4: 0 },
+  // Legacy — применяется к лидам, взятым в работу ДО даты CUTOFF
+  COSTS_LEGACY: { 1: 100, 2: 30, 3: 10, 4: 0 },
+  // Момент перехода на новые тарифы (Пхукет, UTC+7)
+  COSTS_CUTOFF_TS: Math.floor(new Date('2026-04-24T00:00:00+07:00').getTime() / 1000),
 };
 
 export const TELEGRAM = {

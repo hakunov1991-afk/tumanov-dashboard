@@ -262,6 +262,10 @@ async function updateRatingDb(managers) {
         byManager[respId].byCircle[circle].push(lid);
         byManager[respId].taken++;
         takenLeadToManager[lid] = respId;
+
+        // Стоимость лида: до CUTOFF — legacy, после — действующая
+        const costs = t.ts < CIRCLES.COSTS_CUTOFF_TS ? CIRCLES.COSTS_LEGACY : CIRCLES.COSTS;
+        byManager[respId].mqlCost += (costs[circle] || 0);
       }
     }
 
@@ -273,16 +277,6 @@ async function updateRatingDb(managers) {
         byManager[mId].mqlIds.push(lid);
         byManager[mId].mql++;
       }
-    }
-
-    // Затраты на MQL (по кругам)
-    for (const mId of Object.keys(byManager)) {
-      const d = byManager[mId];
-      let cost = 0;
-      for (const c of [1, 2, 3, 4]) {
-        cost += d.byCircle[c].length * (CIRCLES.COSTS[c] || 0);
-      }
-      d.mqlCost = cost;
     }
 
     db.months[key] = {
