@@ -7,6 +7,7 @@
 var RatingPeriod = (function() {
 
   var CIRCLE_COSTS = { 1: 100, 2: 10, 3: 10, 4: 0 };
+  var CIRCLE_COSTS_LEGACY = { 1: 100, 2: 30, 3: 10, 4: 0 };
 
   var db = null;
 
@@ -101,7 +102,8 @@ var RatingPeriod = (function() {
       var totalTaken = 0, totalMql = 0, totalMargin = 0, totalCost = 0;
       var allTakenIds = [], allMqlIds = [], allMarginIds = [];
       var costLeadIds = [];
-      var circleCounts = { 1: 0, 2: 0, 3: 0, 4: 0 };
+      var circleIds = { 1: [], 2: [], 3: [], 4: [] };
+      var k2LegacyIds = [];
 
       for (var ki = 0; ki < monthKeys.length; ki++) {
         var mk = monthKeys[ki];
@@ -115,26 +117,48 @@ var RatingPeriod = (function() {
         if (d.marginLeadIds) allMarginIds = allMarginIds.concat(d.marginLeadIds);
 
         // Стоимость (mqlCost) посчитана на сервере с учётом cutoff 2026-04-24 по К2.
-        // На клиенте используем готовое значение, чтобы не дублировать логику.
         if (typeof d.mqlCost === 'number') totalCost += d.mqlCost;
         if (d.byCircle) {
           for (var c = 1; c <= 4; c++) {
             var ids = d.byCircle[c] || [];
-            circleCounts[c] += ids.length;
+            circleIds[c] = circleIds[c].concat(ids);
             costLeadIds = costLeadIds.concat(ids);
           }
         }
+        if (d.byCircle2Legacy) k2LegacyIds = k2LegacyIds.concat(d.byCircle2Legacy);
       }
 
       var burnPct = totalTaken > 0 ? Math.round((totalTaken - totalMql) / totalTaken * 100) : 0;
       var contribution = Math.round(totalMargin - totalCost);
 
-      // Тултип-разбивка по кругам
+      // Тултип: блок на каждый круг со списком лидов. К2 — два блока если есть оба тарифа.
       var costParts = [];
+      var k2LegacySet = {};
+      for (var kli = 0; kli < k2LegacyIds.length; kli++) k2LegacySet[k2LegacyIds[kli]] = true;
+
       for (var c2 = 1; c2 <= 4; c2++) {
-        if (circleCounts[c2] > 0) {
-          var sub = circleCounts[c2] * (CIRCLE_COSTS[c2] || 0);
-          costParts.push('К' + c2 + ' ($' + CIRCLE_COSTS[c2] + ') × ' + circleCounts[c2] + ' = $' + sub);
+        var ids2 = circleIds[c2];
+        if (!ids2.length) continue;
+        if (c2 === 2) {
+          var legacy = [], current = [];
+          for (var ii = 0; ii < ids2.length; ii++) {
+            if (k2LegacySet[ids2[ii]]) legacy.push(ids2[ii]);
+            else current.push(ids2[ii]);
+          }
+          if (legacy.length && current.length && CIRCLE_COSTS_LEGACY[2] !== CIRCLE_COSTS[2]) {
+            costParts.push('К2 ($' + CIRCLE_COSTS_LEGACY[2] + ') [до 24.04.2026] × ' + legacy.length + ' = $' + (legacy.length * CIRCLE_COSTS_LEGACY[2]));
+            costParts.push(legacy.join(', '));
+            costParts.push('К2 ($' + CIRCLE_COSTS[2] + ') [с 24.04.2026] × ' + current.length + ' = $' + (current.length * CIRCLE_COSTS[2]));
+            costParts.push(current.join(', '));
+          } else {
+            var price2 = (legacy.length && !current.length) ? CIRCLE_COSTS_LEGACY[2] : CIRCLE_COSTS[2];
+            costParts.push('К2 ($' + price2 + ') × ' + ids2.length + ' = $' + (ids2.length * price2));
+            costParts.push(ids2.join(', '));
+          }
+        } else {
+          var priceN = CIRCLE_COSTS[c2] || 0;
+          costParts.push('К' + c2 + ' ($' + priceN + ') × ' + ids2.length + ' = $' + (ids2.length * priceN));
+          costParts.push(ids2.join(', '));
         }
       }
 

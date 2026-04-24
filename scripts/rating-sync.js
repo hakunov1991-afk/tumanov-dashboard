@@ -224,6 +224,8 @@ async function updateRatingDb(managers) {
       byManager[mId] = {
         taken: 0, mql: 0, takenIds: [], mqlIds: [],
         byCircle: { 1: [], 2: [], 3: [], 4: [] },
+        // Лиды К2 со старой ценой ($30) — взяты в работу ДО 24.04.2026
+        byCircle2Legacy: [],
         mqlCost: 0,
       };
     }
@@ -264,8 +266,10 @@ async function updateRatingDb(managers) {
         takenLeadToManager[lid] = respId;
 
         // Стоимость лида: до CUTOFF — legacy, после — действующая
-        const costs = t.ts < CIRCLES.COSTS_CUTOFF_TS ? CIRCLES.COSTS_LEGACY : CIRCLES.COSTS;
+        const isLegacy = t.ts < CIRCLES.COSTS_CUTOFF_TS;
+        const costs = isLegacy ? CIRCLES.COSTS_LEGACY : CIRCLES.COSTS;
         byManager[respId].mqlCost += (costs[circle] || 0);
+        if (circle === 2 && isLegacy) byManager[respId].byCircle2Legacy.push(lid);
       }
     }
 
@@ -316,6 +320,7 @@ function buildRatingRows(db, monthKeys, managers, marginByManagerMonth) {
     const mqlCostLeadIds = []; // все лиды, которые формируют затраты
     const circleCounts = { 1: 0, 2: 0, 3: 0, 4: 0 };
     const circleIds = { 1: [], 2: [], 3: [], 4: [] };
+    const k2LegacyIds = []; // К2 по старой цене ($30)
 
     for (const mk of monthKeys) {
       const data = db.months[mk] && db.months[mk].managers && db.months[mk].managers[mId];
@@ -333,6 +338,7 @@ function buildRatingRows(db, monthKeys, managers, marginByManagerMonth) {
             mqlCostLeadIds.push(...ids);
           }
         }
+        if (data.byCircle2Legacy) k2LegacyIds.push(...data.byCircle2Legacy);
       }
       const margin = marginByManagerMonth[mId] && marginByManagerMonth[mId][mk];
       if (margin) totalMargin += margin.margin;
@@ -343,12 +349,34 @@ function buildRatingRows(db, monthKeys, managers, marginByManagerMonth) {
       : 0;
     const contribution = Math.round(totalMargin - totalCost);
 
-    // Тултип для «Затраты на MQL»
+    // Тултип «Затраты на MQL» — блок на каждый круг.
+    // Для К2 — два отдельных блока (legacy $30 и current $10) если есть оба.
     const costParts = [];
+    const k2LegacySet = new Set(k2LegacyIds);
     for (const c of [1, 2, 3, 4]) {
-      if (circleCounts[c] > 0) {
-        const sub = circleCounts[c] * (CIRCLES.COSTS[c] || 0);
-        costParts.push(`К${c} ($${CIRCLES.COSTS[c]}) × ${circleCounts[c]} = $${sub}`);
+      const ids = circleIds[c];
+      if (!ids.length) continue;
+      if (c === 2) {
+        const legacy = ids.filter(id => k2LegacySet.has(id));
+        const current = ids.filter(id => !k2LegacySet.has(id));
+        if (legacy.length && current.length && CIRCLES.COSTS_LEGACY[2] !== CIRCLES.COSTS[2]) {
+          const subL = legacy.length * CIRCLES.COSTS_LEGACY[2];
+          const subC = current.length * CIRCLES.COSTS[2];
+          costParts.push(`К2 ($${CIRCLES.COSTS_LEGACY[2]}) [до 24.04.2026] × ${legacy.length} = $${subL}`);
+          costParts.push(legacy.join(', '));
+          costParts.push(`К2 ($${CIRCLES.COSTS[2]}) [с 24.04.2026] × ${current.length} = $${subC}`);
+          costParts.push(current.join(', '));
+        } else {
+          const price = legacy.length && !current.length ? CIRCLES.COSTS_LEGACY[2] : CIRCLES.COSTS[2];
+          const sub = ids.length * price;
+          costParts.push(`К2 ($${price}) × ${ids.length} = $${sub}`);
+          costParts.push(ids.join(', '));
+        }
+      } else {
+        const price = CIRCLES.COSTS[c] || 0;
+        const sub = ids.length * price;
+        costParts.push(`К${c} ($${price}) × ${ids.length} = $${sub}`);
+        costParts.push(ids.join(', '));
       }
     }
     const costNote = costParts.join('\n');
