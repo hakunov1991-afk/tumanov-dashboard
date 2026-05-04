@@ -4,7 +4,7 @@
  */
 
 import { amoFetch } from './amo-client.js';
-import { AMO, BROKER_GROUP_ID, FREE_LEAD_USER_ID } from './config.js';
+import { AMO, BROKER_GROUP_ID, FREE_LEAD_USER_ID, EXCLUDED_BROKER_IDS } from './config.js';
 import { saveJson } from './utils.js';
 import { readFile } from 'fs/promises';
 import { join, dirname } from 'path';
@@ -39,11 +39,13 @@ export async function loadManagersFromAmo() {
       return loadManagersFromCache();
     }
 
+    const excluded = new Set(EXCLUDED_BROKER_IDS || []);
     const managers = {};
     for (const user of allUsers) {
       if (user.rights?.group_id === groupId) {
         const uid = String(user.id);
         if (uid === FREE_LEAD_USER_ID) continue; // Исключаем "Свободный лид"
+        if (excluded.has(uid)) continue;          // Исключённые брокеры
         managers[uid] = user.name;
       }
     }

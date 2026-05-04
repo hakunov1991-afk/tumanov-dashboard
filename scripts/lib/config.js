@@ -123,6 +123,8 @@ export const SALES_SHEET = {
 export const BROKER_GROUP_ID = 529606;
 // ID "Свободный лид" — исключать из списка менеджеров
 export const FREE_LEAD_USER_ID = '12956222';
+// Дополнительные исключения брокеров (никогда не показывать в рейтинге)
+export const EXCLUDED_BROKER_IDS = ['13781986'];
 
 export const PHUKET_OFFSET_HOURS = 7;
 export const PHUKET_OFFSET_SEC = 7 * 3600;

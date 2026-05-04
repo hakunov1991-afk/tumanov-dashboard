@@ -26,7 +26,7 @@ import {
   amoFetchCustomFieldHistory, wasCustomFieldSetBefore,
   amoFetchResponsibleEvents,
 } from './lib/amo-client.js';
-import { AMO, STAGES, FIELDS, CIRCLES } from './lib/config.js';
+import { AMO, STAGES, FIELDS, CIRCLES, EXCLUDE_LEADS } from './lib/config.js';
 import { loadManagersFromAmo } from './lib/managers.js';
 import { cell, saveJson, nowPhuket } from './lib/utils.js';
 import { readSalesRows, aggregateMargin, getMonthKeysUntilNow } from './lib/sales-sheet.js';
@@ -38,7 +38,7 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 const DATA_DIR = join(__dirname, '../docs/data/sheets');
 const RAW_DIR = join(__dirname, '../docs/data');
 
-const RATING_DB_VERSION = 3; // v3 — новая логика "ответственного" (закрытые → кто закрыл, K2-4 → исторический)
+const RATING_DB_VERSION = 4; // v4 — EXCLUDE_LEADS (global/reassign/by_manager) + EXCLUDED_BROKER_IDS
 // Окно после takenTs, в которое смотрим "кто стал ответственным после взятия"
 const RESP_AFTER_TAKEN_WINDOW_SEC = 15 * 60; // 15 минут
 
@@ -294,8 +294,16 @@ async function updateRatingDb(managers) {
     const takenLeadToManager = {}; // lid -> mId
     const k1RejectedIds = new Set();
 
+    const globalExcludes = new Set(EXCLUDE_LEADS && EXCLUDE_LEADS.GLOBAL || []);
+    const reassigns = (EXCLUDE_LEADS && EXCLUDE_LEADS.REASSIGN) || {};
+    const byManagerExcludes = (EXCLUDE_LEADS && EXCLUDE_LEADS.BY_MANAGER) || {};
+
     for (const t of takenTransitions) {
       const lid = t.leadId;
+
+      // 1. Глобальное исключение — лид игнорируется полностью
+      if (globalExcludes.has(lid)) continue;
+
       const info = leadInfoMap[lid];
 
       // circleTs = transition ts; если сделка закрыта — момент закрытия
@@ -335,7 +343,14 @@ async function updateRatingDb(managers) {
         if (!respId) respId = info ? info.respId : t.managerId;
       }
 
+      // 2. Принудительная переатрибуция — REASSIGN перебивает любую логику выше
+      if (reassigns[lid]) respId = String(reassigns[lid]);
+
       if (!respId || !byManager[respId]) continue; // ответственный не брокер
+
+      // 3. Per-manager исключение — конкретный лид не считается этому брокеру
+      const mgrExcludes = byManagerExcludes[respId];
+      if (mgrExcludes && mgrExcludes.indexOf(lid) !== -1) continue;
 
       if (byManager[respId].takenIds.indexOf(lid) === -1) {
         byManager[respId].takenIds.push(lid);
