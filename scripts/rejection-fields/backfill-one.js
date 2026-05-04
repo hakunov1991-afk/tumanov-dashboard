@@ -150,7 +150,28 @@ async function main() {
     console.log(`  Текущая «Причина отказа ${c} круг» (${fid}):`, currentByField[fid] || '— пусто');
   }
 
-  // 2. История изменений поля REASON
+  // 2a. Структура целевых полей кругов — нужно понять какой формат записи ждёт API
+  console.log('\nСтруктура полей кругов:');
+  const circleFieldMeta = {};
+  for (const c of [1, 2, 3, 4]) {
+    const fid = FIELD_REASON_BY_CIRCLE[c];
+    const fd = await amo('GET', `/leads/custom_fields/${fid}`);
+    if (fd) {
+      circleFieldMeta[fid] = { type: fd.type, code: fd.code, enums: fd.enums || [] };
+      console.log(`  Поле ${fid} (К${c}): type="${fd.type}", code="${fd.code || ''}", enums=${(fd.enums || []).length}`);
+    }
+  }
+
+  // 2b. Структура поля 1617988 — для маппинга enum_id → текст
+  console.log('Загрузка структуры поля 1617988...');
+  const reasonFieldData = await amo('GET', `/leads/custom_fields/${FIELD_REASON}`);
+  const reasonEnumIdToText = {};
+  if (reasonFieldData && reasonFieldData.enums) {
+    for (const e of reasonFieldData.enums) reasonEnumIdToText[e.id] = e.value;
+  }
+  console.log(`  Поле 1617988: type="${reasonFieldData?.type}", enums=${Object.keys(reasonEnumIdToText).length}`);
+
+  // 3. История изменений поля REASON
   console.log('\nЗагрузка истории поля 1617988 (Причина отказа)...');
   const reasonEvents = await fetchEventsForLead(`custom_field_${FIELD_REASON}_value_changed`, leadId);
   console.log(`  Событий: ${reasonEvents.length}`);
@@ -194,27 +215,45 @@ async function main() {
     const r = reasonByCircle[c];
     if (r) {
       const date = new Date(r.ts * 1000).toISOString().substring(0, 19);
-      console.log(`  Круг ${c}: enum_id=${r.enum_id}, "${r.value}" (от ${date})`);
+      const text = reasonEnumIdToText[r.enum_id] || '???';
+      console.log(`  Круг ${c}: enum_id=${r.enum_id} → "${text}" (от ${date})`);
     } else {
       console.log(`  Круг ${c}: — нет события`);
     }
   }
 
-  // 5. Готовим payload
+  // 5. Готовим payload, формат зависит от типа целевого поля
   const updates = [];
   for (const c of [1, 2, 3, 4]) {
     const r = reasonByCircle[c];
     if (!r) continue;
     const fid = FIELD_REASON_BY_CIRCLE[c];
     const existing = currentByField[fid];
-    if (existing && existing.length > 0) {
-      const existingEnumId = existing[0] && existing[0].enum_id;
-      if (!overwrite) {
-        console.log(`  SKIP круг ${c}: поле ${fid} уже заполнено (enum=${existingEnumId}). Используйте --overwrite.`);
+    if (existing && existing.length > 0 && !overwrite) {
+      console.log(`  SKIP круг ${c}: поле ${fid} уже заполнено. Используйте --overwrite.`);
+      continue;
+    }
+
+    const text = reasonEnumIdToText[r.enum_id] || '';
+    const meta = circleFieldMeta[fid] || { type: 'unknown', enums: [] };
+
+    let valuesPayload;
+    if (meta.enums && meta.enums.length > 0) {
+      // Поле — select. Ищем enum в ЭТОМ поле с тем же value, что в исходном.
+      const matching = meta.enums.find(e => String(e.value).trim() === String(text).trim());
+      if (matching) {
+        valuesPayload = [{ enum_id: matching.id }];
+      } else {
+        console.log(`  ⚠ enum "${text}" не найден в поле ${fid} — пропускаю круг ${c}`);
         continue;
       }
+    } else {
+      // Текстовое поле
+      valuesPayload = [{ value: text }];
     }
-    updates.push({ field_id: fid, values: [{ enum_id: r.enum_id }] });
+
+    console.log(`  → круг ${c}, поле ${fid} (${meta.type}): ${JSON.stringify(valuesPayload)}`);
+    updates.push({ field_id: fid, values: valuesPayload });
   }
 
   if (updates.length === 0) {
