@@ -24,6 +24,7 @@
 import {
   amoFetch, amoFetchTransitions, amoFetchLeadsByIds,
   amoFetchCustomFieldHistory, wasCustomFieldSetBefore,
+  amoFetchResponsibleEvents,
 } from './lib/amo-client.js';
 import { AMO, STAGES, FIELDS, CIRCLES } from './lib/config.js';
 import { loadManagersFromAmo } from './lib/managers.js';
@@ -37,7 +38,9 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 const DATA_DIR = join(__dirname, '../docs/data/sheets');
 const RAW_DIR = join(__dirname, '../docs/data');
 
-const RATING_DB_VERSION = 2; // v2 добавил byCircle + mqlCost
+const RATING_DB_VERSION = 3; // v3 — новая логика "ответственного" (закрытые → кто закрыл, K2-4 → исторический)
+// Окно после takenTs, в которое смотрим "кто стал ответственным после взятия"
+const RESP_AFTER_TAKEN_WINDOW_SEC = 15 * 60; // 15 минут
 
 // Стартовая точка rating-db (для taken/mql по месяцам).
 // Апрель 2025 → даёт 12 месяцев истории до апреля 2026.
@@ -181,6 +184,62 @@ async function updateRatingDb(managers) {
   const k4History = await amoFetchCustomFieldHistory(FIELDS.CIRCLE_K4, historyFrom, nowTs);
   console.log(`  События: K2=${countHistory(k2History)}, K3=${countHistory(k3History)}, K4=${countHistory(k4History)}`);
 
+  // События закрытия — для определения "кто закрыл" (K1 в 143, любой круг в 142/143)
+  console.log(`  Загрузка событий закрытия (142, 143)...`);
+  const wonClosures = await amoFetchTransitions(STAGES.WON, historyFrom, nowTs);
+  const lostClosures = await amoFetchTransitions(STAGES.LOST, historyFrom, nowTs);
+  // closedByMap: leadId -> {respId, ts, statusId} (последнее событие закрытия)
+  const closedByMap = {};
+  function _addClosure(ev, statusId) {
+    const cur = closedByMap[ev.leadId];
+    if (!cur || ev.ts > cur.ts) {
+      closedByMap[ev.leadId] = { respId: ev.managerId, ts: ev.ts, statusId };
+    }
+  }
+  for (const ev of wonClosures) _addClosure(ev, STAGES.WON);
+  for (const ev of lostClosures) _addClosure(ev, STAGES.LOST);
+  console.log(`  Закрытий: 142=${wonClosures.length}, 143=${lostClosures.length}`);
+
+  // События смены ответственного — для определения "кто стал ответственным сразу после взятия"
+  console.log(`  Загрузка событий смены ответственного...`);
+  const respEvents = await amoFetchResponsibleEvents(historyFrom, nowTs);
+  // responsibleTimeline: leadId -> sorted [{ts, respId}]
+  const respTimeline = {};
+  for (const ev of respEvents) {
+    const lid = String(ev.entity_id);
+    let respId = null;
+    if (ev.value_after && ev.value_after[0] && ev.value_after[0].responsible_user_id != null) {
+      respId = String(ev.value_after[0].responsible_user_id);
+    } else if (ev.value_after && ev.value_after.responsible_user_id != null) {
+      respId = String(ev.value_after.responsible_user_id);
+    }
+    if (!respId) continue;
+    if (!respTimeline[lid]) respTimeline[lid] = [];
+    respTimeline[lid].push({ ts: ev.created_at, respId });
+  }
+  for (const lid of Object.keys(respTimeline)) respTimeline[lid].sort((a, b) => a.ts - b.ts);
+  console.log(`  Событий смены ответственного: ${respEvents.length}`);
+
+  // Helper: ответственный, ставший назначенным в окне [takenTs, takenTs + WINDOW] для лида.
+  // Если в окне нет события — берём ответственного на момент takenTs (последнее событие до takenTs).
+  // Если событий вообще нет — возвращаем null (вызывающий fallback на текущего/created_by).
+  function findResponsibleAtOrAfterTaken(lid, takenTs) {
+    const tl = respTimeline[lid];
+    if (!tl || tl.length === 0) return null;
+    // 1) Событие в окне после takenTs (приоритет — кто взял после автоперехода)
+    for (const ev of tl) {
+      if (ev.ts >= takenTs && ev.ts <= takenTs + RESP_AFTER_TAKEN_WINDOW_SEC) return ev.respId;
+      if (ev.ts > takenTs + RESP_AFTER_TAKEN_WINDOW_SEC) break;
+    }
+    // 2) Последнее событие до takenTs (включительно)
+    let last = null;
+    for (const ev of tl) {
+      if (ev.ts <= takenTs) last = ev.respId;
+      else break;
+    }
+    return last;
+  }
+
   for (const { key, year, month } of monthsToSync) {
     const rng = monthRangeSec(year, month - 1, phuket, nowTs);
     console.log(`  ${key}: загрузка из AMO (start=${rng.start}, end=${rng.end})`);
@@ -238,14 +297,11 @@ async function updateRatingDb(managers) {
     for (const t of takenTransitions) {
       const lid = t.leadId;
       const info = leadInfoMap[lid];
-      const respId = info ? info.respId : t.managerId;
-      if (!byManager[respId]) continue; // ответственный не брокер
 
       // circleTs = transition ts; если сделка закрыта — момент закрытия
       let circleTs = t.ts;
-      if (info && (info.statusId === STAGES.WON || info.statusId === STAGES.LOST) && info.closedAt) {
-        circleTs = info.closedAt;
-      }
+      const isClosed = info && (info.statusId === STAGES.WON || info.statusId === STAGES.LOST);
+      if (isClosed && info.closedAt) circleTs = info.closedAt;
 
       const hasK4 = wasCustomFieldSetBefore(k4History, lid, circleTs);
       const hasK3 = wasCustomFieldSetBefore(k3History, lid, circleTs);
@@ -259,6 +315,27 @@ async function updateRatingDb(managers) {
         k1RejectedIds.add(lid);
         continue; // К1-отказ — полностью исключаем
       }
+
+      // === Определение ответственного по новым правилам ===
+      // Закрытые в 142/143 → кто перенёс в финальный статус (для всех кругов)
+      // K1 в 143 → кто перенёс в 143 (особый случай)
+      // K1 открытый или 142 → текущий ответственный
+      // K2/K3/K4 открытый → ответственный, ставший назначенным сразу после takenTs
+      let respId = null;
+      const closure = closedByMap[lid];
+
+      if (isClosed && closure) {
+        respId = closure.respId; // кто перенёс в 142 или 143
+      } else if (circle === 1) {
+        // К1 открытый (или закрыт без события закрытия в загруженном диапазоне)
+        respId = info ? info.respId : t.managerId;
+      } else {
+        // K2/K3/K4 открытый: исторический ответственный после takenTs
+        respId = findResponsibleAtOrAfterTaken(lid, t.ts);
+        if (!respId) respId = info ? info.respId : t.managerId;
+      }
+
+      if (!respId || !byManager[respId]) continue; // ответственный не брокер
 
       if (byManager[respId].takenIds.indexOf(lid) === -1) {
         byManager[respId].takenIds.push(lid);
