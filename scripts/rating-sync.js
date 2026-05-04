@@ -39,9 +39,10 @@ const RAW_DIR = join(__dirname, '../docs/data');
 
 const RATING_DB_VERSION = 2; // v2 добавил byCircle + mqlCost
 
-// Стартовая точка rating-db (для taken/mql по месяцам)
+// Стартовая точка rating-db (для taken/mql по месяцам).
+// Апрель 2025 → даёт 12 месяцев истории до апреля 2026.
 const RATING_DB_START_YEAR = 2025;
-const RATING_DB_START_MONTH = 11; // Ноябрь 2025
+const RATING_DB_START_MONTH = 4; // Апрель 2025
 
 // ==================== ВАЛОВАЯ МАРЖА БРОКЕРОВ ====================
 

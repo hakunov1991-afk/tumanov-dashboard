@@ -1236,12 +1236,18 @@ var RatingPeriod = (function() {
         area.innerHTML = renderTable(rows, periodStr, dateStr);
 
         area.addEventListener('click', function(e) {
-          var td = e.target.closest('td[data-ids]');
+          var td = e.target.closest('td[data-ids], td[data-groups]');
           if (!td) return;
           try {
+            var groupsAttr = td.getAttribute('data-groups');
+            if (groupsAttr) {
+              var groups = JSON.parse(groupsAttr.replace(/&apos;/g, "'"));
+              if (groups && groups.length) showPopupGrouped(groups);
+              return;
+            }
             var ids = JSON.parse(td.getAttribute('data-ids'));
             if (ids && ids.length) showPopup(ids);
-          } catch(err) {}
+          } catch(err) { console.error('popup error', err); }
         });
       }
 
@@ -1289,8 +1295,9 @@ var RatingPeriod = (function() {
       var burnPct = totalTaken > 0 ? Math.round((totalTaken - totalMql) / totalTaken * 100) : 0;
       var contribution = Math.round(totalMargin - totalCost);
 
-      // Тултип: блок на каждый круг со списком лидов. К2 — два блока если есть оба тарифа.
-      var costParts = [];
+      // Группы для попапа «Затраты на MQL»: по кругу + список лидов.
+      // К2 — два блока (legacy/current) если есть оба тарифа.
+      var costGroups = [];
       var k2LegacySet = {};
       for (var kli = 0; kli < k2LegacyIds.length; kli++) k2LegacySet[k2LegacyIds[kli]] = true;
 
@@ -1304,19 +1311,15 @@ var RatingPeriod = (function() {
             else current.push(ids2[ii]);
           }
           if (legacy.length && current.length && CIRCLE_COSTS_LEGACY[2] !== CIRCLE_COSTS[2]) {
-            costParts.push('К2 ($' + CIRCLE_COSTS_LEGACY[2] + ') [до 24.04.2026] × ' + legacy.length + ' = $' + (legacy.length * CIRCLE_COSTS_LEGACY[2]));
-            costParts.push(legacy.join(', '));
-            costParts.push('К2 ($' + CIRCLE_COSTS[2] + ') [с 24.04.2026] × ' + current.length + ' = $' + (current.length * CIRCLE_COSTS[2]));
-            costParts.push(current.join(', '));
+            costGroups.push({ label: 'К2 ($' + CIRCLE_COSTS_LEGACY[2] + ') × ' + legacy.length + ' = $' + (legacy.length * CIRCLE_COSTS_LEGACY[2]) + ' [до 24.04.2026]', ids: legacy });
+            costGroups.push({ label: 'К2 ($' + CIRCLE_COSTS[2] + ') × ' + current.length + ' = $' + (current.length * CIRCLE_COSTS[2]) + ' [с 24.04.2026]', ids: current });
           } else {
             var price2 = (legacy.length && !current.length) ? CIRCLE_COSTS_LEGACY[2] : CIRCLE_COSTS[2];
-            costParts.push('К2 ($' + price2 + ') × ' + ids2.length + ' = $' + (ids2.length * price2));
-            costParts.push(ids2.join(', '));
+            costGroups.push({ label: 'К2 ($' + price2 + ') × ' + ids2.length + ' = $' + (ids2.length * price2), ids: ids2 });
           }
         } else {
           var priceN = CIRCLE_COSTS[c2] || 0;
-          costParts.push('К' + c2 + ' ($' + priceN + ') × ' + ids2.length + ' = $' + (ids2.length * priceN));
-          costParts.push(ids2.join(', '));
+          costGroups.push({ label: 'К' + c2 + ' ($' + priceN + ') × ' + ids2.length + ' = $' + (ids2.length * priceN), ids: ids2 });
         }
       }
 
@@ -1326,7 +1329,7 @@ var RatingPeriod = (function() {
         mql: totalMql, mqlIds: allMqlIds,
         burnPct: burnPct,
         margin: Math.round(totalMargin), marginIds: allMarginIds,
-        cost: totalCost, costIds: costLeadIds, costNote: costParts.join('\n'),
+        cost: totalCost, costIds: costLeadIds, costGroups: costGroups,
         contribution: contribution,
       });
     }
@@ -1373,7 +1376,7 @@ var RatingPeriod = (function() {
       var takenAttr = s.takenIds.length > 0 ? ' data-ids=\'' + JSON.stringify(s.takenIds) + '\' class="cell-clickable"' : '';
       var mqlAttr = s.mqlIds.length > 0 ? ' data-ids=\'' + JSON.stringify(s.mqlIds) + '\' class="cell-clickable"' : '';
       var marginAttr = s.marginIds.length > 0 ? ' data-ids=\'' + JSON.stringify(s.marginIds) + '\' class="cell-clickable"' : '';
-      var costAttr = s.costIds.length > 0 ? ' data-ids=\'' + JSON.stringify(s.costIds) + '\' class="cell-clickable" title="' + esc(s.costNote) + '"' : '';
+      var costAttr = s.costIds.length > 0 ? ' data-groups=\'' + JSON.stringify(s.costGroups).replace(/'/g, '&apos;') + '\' class="cell-clickable" title="Клик — разбивка по кругам"' : '';
 
       var nameDisp = (place === 1 ? '🥇 ' : '') + esc(s.name);
 
@@ -1392,6 +1395,37 @@ var RatingPeriod = (function() {
 
     html += '</table></div>';
     return html;
+  }
+
+  function showPopupGrouped(groups) {
+    var old = document.getElementById('deals-popup');
+    if (old) old.remove();
+
+    var totalIds = 0;
+    var bodyHtml = '';
+    for (var gi = 0; gi < groups.length; gi++) {
+      var g = groups[gi];
+      totalIds += g.ids.length;
+      bodyHtml += '<div style="margin-bottom:14px"><div style="font-weight:600;margin-bottom:6px;color:#0D1B2A">' + esc(g.label) + '</div>';
+      bodyHtml += '<div class="deals-popup-list">' +
+        g.ids.map(function(id) { return '<a href="https://tumanovgroup.amocrm.ru/leads/detail/' + id + '" target="_blank" class="deal-link">' + id + '</a>'; }).join(', ') +
+        '</div></div>';
+    }
+    var allIds = [];
+    for (var gi2 = 0; gi2 < groups.length; gi2++) allIds = allIds.concat(groups[gi2].ids);
+
+    var overlay = document.createElement('div');
+    overlay.id = 'deals-popup';
+    overlay.className = 'deals-popup-overlay';
+    var popup = document.createElement('div');
+    popup.className = 'deals-popup';
+    popup.innerHTML = '<div class="deals-popup-header"><span>Затраты на MQL — разбивка по кругам (' + totalIds + ' лидов)</span><button class="deals-popup-close">&times;</button></div>' +
+      '<div class="deals-popup-body">' + bodyHtml +
+      '<button class="deals-popup-copy" onclick="navigator.clipboard.writeText(\'' + allIds.join(', ') + '\')">Копировать все ID</button></div>';
+    overlay.appendChild(popup);
+    document.body.appendChild(overlay);
+    overlay.addEventListener('click', function(e) { if (e.target === overlay || e.target.classList.contains('deals-popup-close')) overlay.remove(); });
+    document.addEventListener('keydown', function h(e) { if (e.key === 'Escape') { overlay.remove(); document.removeEventListener('keydown', h); } });
   }
 
   function showPopup(ids) {
