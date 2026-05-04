@@ -1,0 +1,134 @@
+ДАШБОРД БЕЗ VPN ИЗ РФ — ЧЕРЕЗ РОССИЙСКИЙ ПРОКСИ
+================================================
+
+ПРОБЛЕМА
+--------
+Основной сервер в Германии (Hetzner). Российские провайдеры блокируют
+немецкие IP — без VPN сайт не открывается.
+
+
+РЕШЕНИЕ
+-------
+Поставить nginx reverse-proxy на российском VPS. Пользователь идёт на
+российский IP, тот незаметно перебрасывает запрос на немецкий сервер.
+
+    Пользователь (РФ)
+          ↓
+    http://<RU_IP>:<PORT>      ← российский VPS с nginx
+          ↓ proxy_pass
+    http://<DE_IP>:<APP_PORT>  ← немецкий сервер с приложением
+
+
+ЧТО НУЖНО
+---------
+1. Российский VPS с публичным IP (любой хостинг с серверами в РФ —
+   Selectel, Reg.ru, Timeweb и т.п.). Минимальный тариф — хватит.
+2. Открытый порт на немецком сервере, по которому отдаётся приложение
+   (например, 3000).
+3. SSH-доступ на оба сервера.
+
+
+ШАГИ
+====
+
+1. НА НЕМЕЦКОМ СЕРВЕРЕ — приложение слушает порт
+-------------------------------------------------
+Убедиться, что приложение доступно:
+
+    curl http://localhost:3000   # должно вернуть HTML
+
+Открыть порт на firewall, чтобы российский VPS мог достучаться:
+
+    sudo ufw allow from <RU_IP> to any port 3000
+
+Лучше ограничить доступ только российским IP — иначе приложение видно
+всему интернету.
+
+
+2. НА РОССИЙСКОМ VPS — поставить nginx
+---------------------------------------
+
+    sudo apt update && sudo apt install -y nginx
+
+
+3. КОНФИГ NGINX
+---------------
+Создать /etc/nginx/sites-available/myapp:
+
+    server {
+        listen <PUBLIC_PORT>;
+        server_name _;
+
+        # Без кеша — данные обновляются часто
+        add_header Cache-Control "no-cache, no-store, must-revalidate" always;
+
+        location / {
+            proxy_pass http://<DE_IP>:<APP_PORT>;
+            proxy_set_header Host $host;
+            proxy_set_header X-Real-IP $remote_addr;
+            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+            proxy_set_header X-Forwarded-Proto $scheme;
+
+            # Длинные таймауты — на случай долгих ответов
+            proxy_connect_timeout 60s;
+            proxy_read_timeout    300s;
+            proxy_send_timeout    300s;
+
+            # Поддержка WebSocket (если нужно)
+            proxy_http_version 1.1;
+            proxy_set_header Upgrade $http_upgrade;
+            proxy_set_header Connection "upgrade";
+        }
+    }
+
+Подставить:
+  <PUBLIC_PORT>  — порт, на котором будут стучаться юзеры (например, 8081)
+  <DE_IP>        — IP немецкого сервера
+  <APP_PORT>     — порт приложения там (например, 3000)
+
+
+4. АКТИВИРОВАТЬ КОНФИГ
+----------------------
+
+    sudo ln -s /etc/nginx/sites-available/myapp /etc/nginx/sites-enabled/
+    sudo nginx -t            # проверить синтаксис
+    sudo systemctl reload nginx
+
+
+5. ОТКРЫТЬ ПОРТ НА РОССИЙСКОМ VPS
+----------------------------------
+
+    sudo ufw allow <PUBLIC_PORT>/tcp
+
+
+6. ПРОВЕРИТЬ
+------------
+
+    http://<RU_IP>:<PUBLIC_PORT>
+
+Открывается без VPN.
+
+
+ОПЦИОНАЛЬНО
+===========
+
+HTTPS:
+  sudo apt install certbot python3-certbot-nginx
+  sudo certbot --nginx
+  (нужен домен — голый IP сертификат не получит)
+
+Свой домен:
+  A-запись dashboard.example.ru → <RU_IP>.
+  Тогда юзер идёт на https://dashboard.example.ru без портов.
+
+Логи:
+  /var/log/nginx/access.log — видно кто заходит.
+
+
+ЧТО ВАЖНО ПОНИМАТЬ
+==================
+- Нагрузка на российский VPS минимальная — он только перекидывает байты.
+- Скорость = скорость канала между РФ и Германией. Обычно нормальная.
+- Если немецкий сервер упадёт — российский nginx вернёт 502 Bad Gateway.
+- Прокси не шифрует трафик между собой и немецким сервером (HTTP).
+  Если есть чувствительные данные — поднимай HTTPS на немецком сервере.
